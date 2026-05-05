@@ -1,0 +1,14 @@
+config.json
+*.log
+logs/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+recordings/
+*.mp3
+*.wav
+*.db
+*.sqlite
+.DS_Store

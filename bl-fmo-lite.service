@@ -1,0 +1,22 @@
+[Unit]
+Description=BL-FMO-LITE FM Monitor
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=graffiti
+WorkingDirectory=/home/graffiti/bl-fmo-lite
+Environment=PATH=/home/graffiti/bl-fmo-lite/venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/graffiti/bl-fmo-lite/venv/bin/gunicorn \
+    --bind 0.0.0.0:5000 \
+    --workers 1 \
+    --worker-class gthread \
+    --threads 8 \
+    --timeout 120 \
+    --access-logfile - \
+    app:app
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

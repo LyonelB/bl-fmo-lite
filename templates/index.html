@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>BL-FMO-LITE — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; }
+    .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; color:#64748b; font-size:0.875rem; font-weight:500; transition:all 0.15s; text-decoration:none; }
+    .sidebar-link:hover, .sidebar-link.active { background:#eff6ff; color:#2563eb; }
+    .sidebar-link svg { width:18px; height:18px; flex-shrink:0; }
+    .dot { width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
+    .dot-green  { background:#22c55e; box-shadow:0 0 6px #22c55e88; }
+    .dot-orange { background:#f97316; box-shadow:0 0 6px #f9731688; }
+    .dot-red    { background:#ef4444; box-shadow:0 0 6px #ef444488; }
+    .dot-gray   { background:#9ca3af; }
+    .vu-bar { height:5px; border-radius:3px; transition:width 0.2s ease-out; }
+    .card { background:white; border:1px solid #f1f5f9; border-radius:12px; padding:14px; }
+    .section-label { font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; }
+    @keyframes pulse-ring { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .pulse { animation:pulse-ring 1.5s ease-in-out infinite; }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- ═══════════════════════════════════════════════════════ SIDEBAR -->
+<aside class="w-64 bg-white border-r border-gray-100 flex flex-col flex-shrink-0 h-screen">
+
+  <!-- Logo -->
+  <div class="p-5 border-b border-gray-100">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">BL</div>
+      <div>
+        <div class="text-sm font-semibold text-gray-900">BL-FMO-LITE</div>
+        <div class="text-xs text-gray-400 font-mono" id="sidebar-frequency">— MHz</div>
+        <div class="text-xs font-semibold text-blue-500 font-mono uppercase tracking-widest" id="sidebar-tuner">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+    <a href="/" class="sidebar-link active">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="/config" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+      Configuration
+    </a>
+    <a href="/stats" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Statistiques
+    </a>
+    <a href="/about" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      À propos
+    </a>
+    <a href="https://github.com/LyonelB/bl-fmo-lite" target="_blank" class="sidebar-link">
+      <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      GitHub
+    </a>
+  </nav>
+
+  <!-- Déconnexion -->
+  <div class="p-4 border-t border-gray-100">
+    <a href="/logout" class="sidebar-link" style="color:#f87171" onmouseover="this.style.background='#fff1f2';this.style.color='#dc2626'" onmouseout="this.style.background='';this.style.color='#f87171'">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      Déconnexion
+    </a>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════ MAIN -->
+<main class="flex-1 flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-3">
+      <h1 class="text-base font-semibold text-gray-900" id="station-name-display">BL-FMO-LITE</h1>
+      <span class="text-xs text-gray-400 font-mono" id="frequency-display">—</span>
+    </div>
+    <div class="flex items-center gap-5">
+      <div class="text-right">
+        <div class="text-sm font-mono font-semibold text-gray-900" id="current-time">--:--:--</div>
+        <div class="text-xs text-gray-400" id="current-date"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenu scrollable -->
+  <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+
+    <!-- ── Bande du haut ──────────────────────────────────────── -->
+    <div class="flex-shrink-0 grid gap-3" style="grid-template-columns: 3fr 2fr 2fr">
+
+      <!-- Bloc 1 : Logo station + RDS -->
+      <div class="card flex gap-0 p-0 overflow-hidden">
+        <!-- Logo 150×150 — toujours visible, placeholder par défaut -->
+        <div id="station-logo-container" class="flex-shrink-0 flex items-center justify-center bg-gray-50 border-r border-gray-100" style="width:150px; min-height:120px">
+          <img id="station-logo" src="" alt="Logo"
+            class="hidden object-contain p-3" style="width:150px; height:150px">
+          <div id="station-logo-placeholder"
+            class="flex flex-col items-center justify-center gap-1.5" style="width:150px; height:150px">
+            <svg class="w-14 h-14 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+            </svg>
+            <span class="text-xs font-mono text-gray-300 tracking-widest">FM</span>
+          </div>
+        </div>
+        <!-- Champs RDS -->
+        <div class="flex-1 min-w-0 p-3 flex flex-col justify-center gap-2">
+          <div class="flex items-center gap-2">
+            <span class="section-label">RDS</span>
+            <span id="rds-status-dot" class="dot dot-gray"></span>
+          </div>
+          <!-- Ligne 1 : PS + PI côte à côte -->
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-xs text-gray-400 mb-1">PS</div>
+              <div class="font-mono text-sm font-semibold text-gray-900 bg-gray-50 px-2 py-1 rounded border border-gray-100 text-center" id="rds-ps-display">—</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400 mb-1">PI</div>
+              <div class="font-mono text-sm font-semibold text-gray-900 bg-gray-50 px-2 py-1 rounded border border-gray-100 text-center" id="rds-pi-display">—</div>
+            </div>
+          </div>
+          <!-- Ligne 2 : RT pleine largeur -->
+          <div>
+            <div class="text-xs text-gray-400 mb-1">RT</div>
+            <div class="font-mono text-xs font-medium text-gray-700 bg-gray-50 px-2 py-1.5 rounded border border-gray-100 w-full overflow-hidden" id="rds-rt-display" style="white-space:normal;word-break:break-word;line-height:1.4">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloc 2 : Alertes / Email alertes -->
+      <div class="card flex gap-3 items-center justify-around">
+        <div class="text-center flex-shrink-0">
+          <div class="section-label mb-1">Alertes</div>
+          <div class="text-sm font-bold font-mono text-gray-900" id="alerts-display">0</div>
+        </div>
+        <div class="w-px h-8 bg-gray-100 flex-shrink-0"></div>
+        <div class="min-w-0 flex-1">
+          <div class="section-label mb-1">Email alertes</div>
+          <div class="text-sm font-bold font-mono text-gray-900 truncate" id="email-display">—</div>
+        </div>
+      </div>
+
+      <!-- Bloc 3 : Signal / Modulation / Uptime -->
+      <div class="card flex gap-3 items-center justify-around">
+        <div class="text-center flex-1">
+          <div class="section-label mb-1">Signal</div>
+          <div class="text-sm font-bold font-mono text-green-600" id="status-display">OK</div>
+        </div>
+        <div class="w-px h-8 bg-gray-100"></div>
+        <div class="text-center flex-1">
+          <div class="section-label mb-1">Modulation</div>
+          <div class="text-sm font-bold font-mono text-green-600" id="modulation-display">Active</div>
+        </div>
+        <div class="w-px h-8 bg-gray-100"></div>
+        <div class="text-center flex-1">
+          <div class="section-label mb-1">Uptime</div>
+          <div class="text-sm font-bold font-mono text-gray-900" id="uptime-display">0h 0m</div>
+        </div>
+      </div>
+
+    </div><!-- /top row -->
+
+    <!-- ── Grille 2 colonnes ──────────────────────────────────── -->
+    <div class="flex-shrink-0 grid grid-cols-2 gap-3">
+
+      <!-- ══ Col gauche ══ -->
+      <div class="flex flex-col gap-3">
+
+        <!-- Signal RF + Player -->
+        <div class="card">
+          <div class="flex justify-between items-center mb-2">
+            <span class="section-label">Signal RF</span>
+            <span class="text-sm font-bold font-mono text-gray-900" id="vu-meter-value-main">— dBf</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-0.5">
+            <div id="vu-meter-bar-main" class="vu-bar w-0" style="background:#10b981; height:100%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 font-mono mb-1">
+            <span>0</span><span>15</span><span>30</span><span>45</span><span>60 dBf</span>
+          </div>
+          <div class="border-t border-gray-100 mb-3 mt-2"></div>
+
+          <!-- Player -->
+          <!-- Player -->
+          <div class="flex items-center gap-3">
+            <button id="rec-btn" onclick="toggleRecord()"
+              class="w-9 h-9 rounded-full border-2 border-gray-200 bg-white hover:border-red-400 hover:text-red-500 transition flex items-center justify-center text-gray-400 flex-shrink-0">
+              <span id="rec-dot" class="inline-block w-2.5 h-2.5 rounded-full bg-gray-300"></span>
+            </button>
+            <button id="play-button"
+              class="w-9 h-9 rounded-full border-2 border-gray-200 bg-white hover:border-blue-500 hover:text-blue-600 transition flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <div class="flex items-center gap-1.5 flex-1 min-w-0">
+              <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+              <input type="range" id="volume-slider" min="0" max="100" value="50" class="w-16 h-1 bg-gray-200 rounded appearance-none cursor-pointer accent-blue-500">
+              <span id="volume-value" class="text-xs text-gray-500 w-7">50%</span>
+              <a href="/stream.mp3" target="_blank" class="text-xs text-blue-500 hover:underline shrink-0">Externe</a>
+            </div>
+          </div>
+
+          <div id="rec-progress-bar" class="hidden mt-2">
+            <div class="flex justify-between text-xs text-gray-500 mb-1">
+              <span id="rec-timer">00:00</span>
+              <span id="rec-size">0 Mo / 50 Mo</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-1">
+              <div id="rec-progress" class="bg-red-500 h-1 rounded-full" style="width:0%"></div>
+            </div>
+          </div>
+          <audio id="audio-player" preload="none"></audio>
+        </div>
+
+      </div><!-- /col gauche -->
+
+      <!-- ══ Col droite : Qualité RF ══ -->
+      <!-- ══ Col droite : Qualité RF ══ -->
+      <div class="card flex flex-col gap-3">
+
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Qualité RF
+          </span>
+          <span id="stereo-badge" class="text-xs font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-400">—</span>
+        </div>
+
+        <div class="border-t border-gray-100"></div>
+
+        <!-- SNR -->
+        <div>
+          <div class="flex justify-between items-baseline mb-1">
+            <span class="text-xs font-semibold text-gray-600">SNR <span class="font-normal text-gray-400">signal/bruit</span></span>
+            <span class="text-sm font-mono font-semibold text-gray-800" id="quality-snr-val">— dB</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+            <div id="quality-snr-bar" class="vu-bar w-0" style="background:#22c55e;height:100%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 font-mono mt-0.5"><span>0</span><span>20</span><span>40</span><span>60 dB</span></div>
+        </div>
+
+        <div class="border-t border-gray-100"></div>
+
+        <!-- Multipath -->
+        <div>
+          <div class="flex justify-between items-baseline mb-1">
+            <span class="text-xs font-semibold text-gray-600">Multipath <span class="font-normal text-gray-400">réflexions</span></span>
+            <span class="text-sm font-mono font-semibold text-gray-800" id="quality-mp-val">— %</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+            <div id="quality-mp-bar" class="vu-bar w-0" style="background:#22c55e;height:100%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 font-mono mt-0.5"><span>0</span><span>25</span><span>50</span><span>100 %</span></div>
+        </div>
+
+        <div class="border-t border-gray-100"></div>
+
+        <!-- Offset fréquence -->
+        <div>
+          <div class="flex justify-between items-baseline mb-1">
+            <span class="text-xs font-semibold text-gray-600">Offset <span class="font-normal text-gray-400">fréquence</span></span>
+            <span class="text-sm font-mono font-semibold text-gray-800" id="quality-offset-val">— Hz</span>
+          </div>
+          <div class="relative rounded-full bg-gray-100 overflow-hidden" style="height:6px">
+            <div style="position:absolute;left:50%;top:0;width:1px;height:100%;background:#d1d5db"></div>
+            <div id="quality-offset-bar" style="position:absolute;top:0;height:100%;border-radius:3px;transition:all 0.3s;background:#3b82f6;width:2px;left:50%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 font-mono mt-0.5"><span>−10 kHz</span><span>0</span><span>+10 kHz</span></div>
+        </div>
+
+        <div class="border-t border-gray-100"></div>
+
+        <!-- Puissance RF -->
+        <div>
+          <div class="flex justify-between items-baseline mb-1">
+            <span class="text-xs font-semibold text-gray-600">Puissance <span class="font-normal text-gray-400">RF</span></span>
+            <span class="text-sm font-mono font-semibold text-gray-800" id="quality-power-val">— dBf</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+            <div id="quality-power-bar" class="vu-bar w-0 bg-green-400" style="height:100%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 font-mono mt-0.5"><span>0</span><span>30</span><span>60 dBf</span></div>
+        </div>
+
+        <div class="border-t border-gray-100"></div>
+
+        <!-- TA / TP RDS -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-600">TA / TP <span class="font-normal text-gray-400">RDS</span></span>
+          <div class="flex gap-2">
+            <span id="rds-ta-badge" class="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">TA —</span>
+            <span id="rds-tp-badge" class="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">TP —</span>
+          </div>
+        </div>
+
+      </div><!-- /col droite Qualité RF -->
+    </div><!-- /grille 2 cols -->
+
+    <!-- ── Historique audio — pleine largeur ─────────────────── -->
+    <div class="card flex-1" style="min-height:140px">
+      <div class="flex justify-between items-center mb-2">
+        <span class="section-label">Signal RF — 60 s</span>
+        <span class="text-xs text-gray-400 font-mono" id="realtime-chart-status">En direct</span>
+      </div>
+      <div style="height:calc(100% - 28px)">
+        <canvas id="audioChart"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /scroll area -->
+</main>
+
+<script>
+    // Fonction pour récupérer le token CSRF
+    function getCSRFToken() {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      return meta ? meta.content : '';
+    }
+
+    // =============================================
+    // VU-MÈTRE / SIGNAL RF
+    // =============================================
+    function updateVUMeter(stats) {
+        const dbf = stats.signal_dbf ?? 0;
+        const pct = Math.max(0, Math.min(100, (dbf / 60) * 100));
+        document.getElementById('vu-meter-value-main').textContent = dbf.toFixed(1) + ' dBf';
+        const bar = document.getElementById('vu-meter-bar-main');
+        if (bar) {
+            bar.style.width = pct + '%';
+            bar.style.background = dbf < 10 ? '#ef4444' : dbf < 20 ? '#f97316' : '#10b981';
+        }
+    }
+
+    // =============================================
+    // PLAYER AUDIO
+    // =============================================
+    const playButton  = document.getElementById('play-button');
+    const audioPlayer = document.getElementById('audio-player');
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeValue  = document.getElementById('volume-value');
+    let isPlaying = false;
+    let playerTimer = null;
+    const PLAYER_TIMEOUT = 15 * 60 * 1000;
+
+    function stopPlayer() {
+        audioPlayer.pause();
+        audioPlayer.src = "";
+        isPlaying = false;
+        playButton.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        playButton.classList.remove("border-blue-500", "text-blue-600", "bg-blue-50");
+        if (playerTimer) { clearTimeout(playerTimer); playerTimer = null; }
+    }
+
+
+    playButton.addEventListener('click', () => {
+        if (playButton.disabled) return;
+        if (!isPlaying) {
+            audioPlayer.src = '/stream.mp3?t=' + Date.now();
+            audioPlayer.play();
+            isPlaying = true;
+            playButton.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>';
+            playButton.classList.add('border-blue-500', 'text-blue-600', 'bg-blue-50');
+            // Auto-stop après 15 minutes
+            if (playerTimer) clearTimeout(playerTimer);
+            playerTimer = setTimeout(() => {
+                stopPlayer();
+                console.log('Player arrêté automatiquement après 15 minutes');
+            }, PLAYER_TIMEOUT);
+        } else {
+            stopPlayer();
+        }
+    });
+
+    volumeSlider.addEventListener('input', (e) => {
+        audioPlayer.volume = e.target.value / 100;
+        volumeValue.textContent = e.target.value + '%';
+    });
+
+    // =============================================
+    // STATS & CONFIG
+    // =============================================
+    async function loadConfig() {
+        try {
+            const response = await fetch('/api/config/full', {credentials: 'include'});
+            const config = await response.json();
+            document.getElementById('station-name-display').textContent = config.station?.name || 'BL-FMO-LITE';
+            const freq = config.tuner?.frequency || config.rtl_sdr?.frequency || '—';
+            const freqLabel = freq !== '—' ? freq.replace('M', ' MHz') : '—';
+            document.getElementById('frequency-display').textContent = freqLabel;
+            document.getElementById('sidebar-frequency').textContent  = freqLabel;
+            const tunerType = config.tuner?.type || config.tuner_type || '—';
+            document.getElementById('sidebar-tuner').textContent = tunerType.toUpperCase();
+            let emailDisplay = 'Non configuré';
+            if (config.email?.recipient_emails) {
+                const recip = config.email.recipient_emails;
+                emailDisplay = Array.isArray(recip) ? recip[0] : recip.split(',')[0].trim();
+            }
+            document.getElementById('email-display').textContent = emailDisplay;
+        } catch (error) {
+            console.error('Erreur config:', error);
+        }
+    }
+
+    async function updateStats() {
+        try {
+            const response = await fetch('/api/stats', {credentials: 'include'});
+            const stats = await response.json();
+
+            const level = stats.current_level || -100;
+            const levelPercent = Math.max(0, Math.min(100, level + 100));
+
+            // Modulation
+            const modEl = document.getElementById('modulation-display');
+            if (!stats.signal_ok) {
+                modEl.textContent = '—';
+                modEl.className = 'text-sm font-bold font-mono text-gray-400';
+            } else if (stats.modulation_ok) {
+                modEl.textContent = 'Active';
+                modEl.className = 'text-sm font-bold font-mono text-green-600';
+            } else {
+                modEl.textContent = 'Absente';
+                modEl.className = 'text-sm font-bold font-mono text-orange-500';
+            }
+
+            updateVUMeter(stats);
+            pushRealtimeLevel(smoothedLevel(stats.signal_dbf ?? 0));
+            updateQuality(stats);
+
+            const uptimeSeconds = stats.uptime || 0;
+            const hours   = Math.floor(uptimeSeconds / 3600);
+            const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+            document.getElementById('uptime-display').textContent  = hours + 'h ' + minutes + 'm';
+            document.getElementById('alerts-display').textContent  = stats.alerts_sent || 0;
+
+            const statusEl = document.getElementById('status-display');
+            if (stats.signal_ok) {
+                statusEl.textContent = 'OK';
+                statusEl.className = 'text-sm font-bold font-mono text-green-600';
+            } else {
+                statusEl.textContent = 'Perdu';
+                statusEl.className = 'text-sm font-bold font-mono text-orange-500';
+            }
+
+            if (stats.ps && stats.ps !== '-') document.getElementById('rds-ps-display').textContent = stats.ps;
+            if (stats.rt && stats.rt !== '-') document.getElementById('rds-rt-display').textContent = stats.rt;
+            if (stats.pi)                     document.getElementById('rds-pi-display').textContent = stats.pi;
+
+            // Voyant RDS
+            const rdsDot = document.getElementById('rds-status-dot');
+            if (!stats.rds_ever_received) {
+                rdsDot.className = 'dot dot-gray';
+                rdsDot.title = 'RDS non reçu';
+            } else if (stats.rds_ok) {
+                rdsDot.className = 'dot dot-green pulse';
+                rdsDot.title = 'RDS OK';
+            } else {
+                rdsDot.className = 'dot dot-red';
+                rdsDot.title = 'RDS absent';
+            }
+
+            // Logo station — container toujours visible, placeholder par défaut
+            const logoImg         = document.getElementById('station-logo');
+            const logoPlaceholder = document.getElementById('station-logo-placeholder');
+            if (stats.station_logo) {
+                if (logoImg && logoImg.getAttribute('data-src') !== stats.station_logo) {
+                    logoImg.setAttribute('data-src', stats.station_logo);
+                    logoImg.src = stats.station_logo;
+                    logoImg.onerror = () => {
+                        logoImg.removeAttribute('data-src');
+                        logoImg.src = '';
+                        logoImg.classList.add('hidden');
+                        if (logoPlaceholder) logoPlaceholder.classList.remove('hidden');
+                    };
+                    logoImg.onload = () => {
+                        logoImg.classList.remove('hidden');
+                        if (logoPlaceholder) logoPlaceholder.classList.add('hidden');
+                    };
+                }
+            } else {
+                if (logoImg)         logoImg.classList.add('hidden');
+                if (logoPlaceholder) logoPlaceholder.classList.remove('hidden');
+            }
+
+        } catch (error) {
+            console.error('Erreur stats:', error);
+        }
+    }
+
+    // =============================================
+    // GRAPHIQUE TEMPS RÉEL (30 secondes)
+    // =============================================
+    const REALTIME_WINDOW   = 120;
+    const REALTIME_INTERVAL = 500;
+    let audioChart = null;
+    let realtimeData = [];  // tableau d'objets {x: timestamp ms, y: valeur}
+    let lastRealtimePush = 0;
+
+    function initRealtimeChart() {
+        const ctx = document.getElementById('audioChart').getContext('2d');
+        audioChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Signal RF (dBf)',
+                    data: realtimeData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.08)',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.5,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        title: { display: true, text: 'dBf', font: { size: 10 } },
+                        ticks: { font: { size: 10 }, maxTicksLimit: 5 },
+                        grid: { color: 'rgba(0,0,0,0.04)' }
+                    },
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second',
+                            displayFormats: { second: 'HH:mm:ss' },
+                            tooltipFormat: 'HH:mm:ss'
+                        },
+                        ticks: { maxTicksLimit: 6, maxRotation: 0, font: { size: 10 },
+                                 source: 'auto' },
+                        grid: { display: false }
+                    }
+                },
+                animation: { duration: 0 }
+            }
+        });
+    }
+
+    function pushRealtimeLevel(levelDb) {
+        const now = Date.now();
+        if (now - lastRealtimePush < REALTIME_INTERVAL) return;
+        lastRealtimePush = now;
+
+        realtimeData.push({ x: now, y: Math.round(levelDb * 10) / 10 });
+
+        // Garder seulement les REALTIME_WINDOW dernières secondes
+        const cutoff = now - REALTIME_WINDOW * 1000;
+        while (realtimeData.length > 0 && realtimeData[0].x < cutoff) {
+            realtimeData.shift();
+        }
+
+        if (audioChart && realtimeData.length > 0) {
+            audioChart.options.scales.x.min = cutoff;
+            audioChart.options.scales.x.max = now;
+            const values = realtimeData.map(p => p.y);
+            const dMin = Math.min(...values), dMax = Math.max(...values);
+            const center = (dMin + dMax) / 2;
+            const halfRange = Math.max(1, (dMax - dMin) / 2 + 1);
+            audioChart.options.scales.y.min = Math.max(0,  Math.floor((center - halfRange) * 10) / 10);
+            audioChart.options.scales.y.max = Math.min(60, Math.ceil( (center + halfRange) * 10) / 10);
+            audioChart.update('none');
+        }
+    }
+
+    let historyData = [];
+    function loadAudioHistory() {}
+    function updateHistoryChart() {}
+    function updateDevMeter(deviationKhz) {}
+
+    // Buffer de lissage : moyenne sur 3 valeurs consécutives
+    let _smoothBuf = [];
+    function smoothedLevel(val) {
+        _smoothBuf.push(val);
+        if (_smoothBuf.length > 2) _smoothBuf.shift();
+        return _smoothBuf.reduce((a, b) => a + b, 0) / _smoothBuf.length;
+    }
+
+    // =============================================
+    // QUALITÉ RF (SNR / Multipath / Offset / Stéréo / TA-TP)
+    // =============================================
+    function updateQuality(stats) {
+        // SNR
+        const snr = stats.snr ?? null;
+        const snrVal = document.getElementById('quality-snr-val');
+        const snrBar = document.getElementById('quality-snr-bar');
+        if (snr !== null) {
+            snrVal.textContent = snr.toFixed(0) + ' dB';
+            const pct = Math.max(0, Math.min(100, (snr / 60) * 100));
+            snrBar.style.width = pct + '%';
+            snrBar.style.background = snr >= 40 ? '#22c55e' : snr >= 25 ? '#f59e0b' : '#ef4444';
+        } else { snrVal.textContent = '— dB'; snrBar.style.width = '0%'; }
+
+        // Multipath
+        const mp = stats.multipath ?? null;
+        const mpVal = document.getElementById('quality-mp-val');
+        const mpBar = document.getElementById('quality-mp-bar');
+        if (mp !== null) {
+            mpVal.textContent = mp.toFixed(0) + ' %';
+            const pct = Math.max(0, Math.min(100, mp));
+            mpBar.style.width = pct + '%';
+            mpBar.style.background = mp < 25 ? '#22c55e' : mp < 60 ? '#f59e0b' : '#ef4444';
+        } else { mpVal.textContent = '— %'; mpBar.style.width = '0%'; }
+
+        // Offset fréquence
+        const offset = stats.offset_hz ?? null;
+        const offsetVal = document.getElementById('quality-offset-val');
+        const offsetBar = document.getElementById('quality-offset-bar');
+        const MAX_HZ = 10000;
+        if (offset !== null) {
+            const sign = offset >= 0 ? '+' : '';
+            offsetVal.textContent = sign + (offset / 1000).toFixed(2) + ' kHz';
+            const clamp = Math.max(-MAX_HZ, Math.min(MAX_HZ, offset));
+            const absPct = Math.abs(clamp / MAX_HZ);
+            const widthPct = absPct * 50;
+            offsetBar.style.background = absPct < 0.3 ? '#3b82f6' : absPct < 0.7 ? '#f59e0b' : '#ef4444';
+            if (offset >= 0) { offsetBar.style.left = '50%'; offsetBar.style.width = widthPct + '%'; }
+            else { offsetBar.style.left = (50 - widthPct) + '%'; offsetBar.style.width = widthPct + '%'; }
+        } else { offsetVal.textContent = '— Hz'; offsetBar.style.width = '2px'; offsetBar.style.left = '50%'; }
+
+        // Puissance RF
+        const dbf = stats.signal_dbf ?? null;
+        const pwrVal = document.getElementById('quality-power-val');
+        const pwrBar = document.getElementById('quality-power-bar');
+        if (dbf !== null) {
+            pwrVal.textContent = dbf.toFixed(1) + ' dBf';
+            pwrBar.style.width = Math.max(0, Math.min(100, (dbf / 60) * 100)) + '%';
+        } else { pwrVal.textContent = '— dBf'; pwrBar.style.width = '0%'; }
+
+        // Badge Stéréo / Mono
+        const badge = document.getElementById('stereo-badge');
+        const bc = 'text-xs font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full ';
+        if (stats.stereo_present) { badge.textContent = 'Stéréo'; badge.className = bc + 'bg-green-100 text-green-700'; }
+        else if (stats.signal_ok)  { badge.textContent = 'Mono';   badge.className = bc + 'bg-yellow-100 text-yellow-600'; }
+        else                       { badge.textContent = '—';       badge.className = bc + 'bg-gray-100 text-gray-400'; }
+
+        // TA / TP
+        _rdsFlag('rds-ta-badge', 'TA', stats.rds_ta);
+        _rdsFlag('rds-tp-badge', 'TP', stats.rds_tp);
+    }
+
+    function _rdsFlag(id, label, value) {
+        const el = document.getElementById(id); if (!el) return;
+        if (value === true)  { el.textContent = label + ' ON';  el.className = 'text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700'; }
+        else if (value === false) { el.textContent = label + ' OFF'; el.className = 'text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400'; }
+        else                 { el.textContent = label + ' —';   el.className = 'text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400'; }
+    }
+
+    function updateBarMeter(bars, pct) {}
+    const lBars = [], rBars = [], snrBars = [];
+
+    // =============================================
+    // SERVER-SENT EVENTS (SSE)
+    // =============================================
+    function connectSSE() {
+        const eventSource = new EventSource('/api/stream/stats');
+
+        eventSource.onmessage = (event) => {
+            try {
+                const stats = JSON.parse(event.data);
+                const level = stats.current_level || -100;
+                const levelPercent = Math.max(0, Math.min(100, level + 100));
+
+                const modEl = document.getElementById('modulation-display');
+                if (!stats.signal_ok) {
+                    modEl.textContent = '—'; modEl.className = 'text-sm font-bold font-mono text-gray-400';
+                } else if (stats.modulation_ok) {
+                    modEl.textContent = 'Active'; modEl.className = 'text-sm font-bold font-mono text-green-600';
+                } else {
+                    modEl.textContent = 'Absente'; modEl.className = 'text-sm font-bold font-mono text-orange-500';
+                }
+
+                updateVUMeter(stats);
+                pushRealtimeLevel(smoothedLevel(stats.signal_dbf ?? 0));
+                updateQuality(stats);
+                if (stats.ps && stats.ps !== '-') document.getElementById('rds-ps-display').textContent = stats.ps;
+                if (stats.rt && stats.rt !== '-') document.getElementById('rds-rt-display').textContent = stats.rt;
+
+                const rdsDotSSE = document.getElementById('rds-status-dot');
+                if (!stats.rds_ever_received) {
+                    rdsDotSSE.className = 'dot dot-gray'; rdsDotSSE.title = 'RDS non reçu';
+                } else if (stats.rds_ok) {
+                    rdsDotSSE.className = 'dot dot-green pulse'; rdsDotSSE.title = 'RDS OK';
+                } else {
+                    rdsDotSSE.className = 'dot dot-red'; rdsDotSSE.title = 'RDS absent';
+                }
+            } catch(e) { console.error('Erreur parsing SSE:', e); }
+        };
+
+        eventSource.onerror = () => { eventSource.close(); setTimeout(connectSSE, 5000); };
+    }
+
+    // =============================================
+    // HEURE ACTUELLE
+    // =============================================
+    function updateTime() {
+        const now  = new Date();
+        document.getElementById('current-time').textContent = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        document.getElementById('current-date').textContent = now.toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    }
+
+    // Pré-chargement historique 60s pour le graphique RF
+    async function loadSignalHistory() {
+        try {
+            const res = await fetch('/api/signal/history', {credentials: 'include'});
+            if (!res.ok) return;
+            const history = await res.json();
+            if (!Array.isArray(history)) return;
+            history.forEach(p => realtimeData.push({ x: p.t, y: p.l }));
+            realtimeData.sort((a, b) => a.x - b.x);
+            if (audioChart && realtimeData.length > 0) audioChart.update('none');
+        } catch (e) { console.error('loadSignalHistory error:', e); }
+    }
+
+    // Appels initiaux
+    updateTime();
+    loadConfig();
+    updateStats();
+    initRealtimeChart();
+    loadSignalHistory();
+    connectSSE();
+    setInterval(updateTime,   1000);
+    setInterval(updateStats, 10000);
+
+    // =============================================
+    // ENREGISTREMENT AUDIO
+    // =============================================
+    let isRecording  = false;
+    let recStartTime = null;
+    let recInterval  = null;
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && isRecording) {
+            updateRecStatus();
+            clearInterval(recInterval);
+            recInterval = setInterval(updateRecStatus, 2000);
+        }
+    });
+
+    async function toggleRecord() {
+        if (!isRecording) { await startRecord(); } else { await stopRecord(); }
+    }
+
+    async function startRecord() {
+        try {
+            const res  = await fetch('/api/record/start', { method:'POST', headers:{'X-CSRFToken': await getCsrfToken()}, credentials: 'include' });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                isRecording  = true;
+                recStartTime = Date.now();
+                document.getElementById('rec-btn').className  = 'w-9 h-9 rounded-full border-2 border-red-500 bg-white text-red-500 transition flex items-center justify-center';
+                document.getElementById('rec-dot').className  = 'inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse';
+                document.getElementById('rec-progress-bar').classList.remove('hidden');
+                recInterval = setInterval(updateRecStatus, 2000);
+            } else { alert('Erreur : ' + data.message); }
+        } catch(e) { console.error(e); }
+    }
+
+    async function stopRecord() {
+        clearInterval(recInterval);
+        try {
+            const res  = await fetch('/api/record/stop', { method:'POST', headers:{'X-CSRFToken': await getCsrfToken()}, credentials: 'include' });
+            const data = await res.json();
+            if (data.status === 'ok') { resetRecBtn(); window.location.href = '/api/record/download'; }
+            else { alert('Erreur : ' + data.message); resetRecBtn(); }
+        } catch(e) { console.error(e); resetRecBtn(); }
+    }
+
+    async function updateRecStatus() {
+        try {
+            const res  = await fetch('/api/record/status', {credentials: 'include'});
+            const data = await res.json();
+            if (!data.recording) { clearInterval(recInterval); resetRecBtn(); window.location.href = '/api/record/download'; return; }
+            const pct     = Math.min(100, (data.size / data.max) * 100);
+            const mo      = (data.size / 1024 / 1024).toFixed(1);
+            const elapsed = recStartTime ? Math.floor((Date.now() - recStartTime) / 1000) : 0;
+            const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const ss = String(elapsed % 60).padStart(2, '0');
+            document.getElementById('rec-timer').textContent   = mm + ':' + ss;
+            document.getElementById('rec-size').textContent    = mo + ' Mo / 50 Mo';
+            document.getElementById('rec-progress').style.width = pct + '%';
+        } catch(e) { console.error(e); }
+    }
+
+    function resetRecBtn() {
+        isRecording  = false;
+        recStartTime = null;
+        document.getElementById('rec-btn').className = 'w-9 h-9 rounded-full border-2 border-gray-200 bg-white hover:border-red-400 hover:text-red-500 transition flex items-center justify-center text-gray-400';
+        document.getElementById('rec-dot').className = 'inline-block w-2.5 h-2.5 rounded-full bg-gray-300';
+        document.getElementById('rec-progress-bar').classList.add('hidden');
+        document.getElementById('rec-progress').style.width = '0%';
+    }
+
+    async function getCsrfToken() {
+        const res  = await fetch('/api/csrf-token', {credentials: 'include'});
+        const data = await res.json();
+        return data.csrf_token;
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>FM Monitor — Configuration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; color:#64748b; font-size:0.875rem; font-weight:500; transition:all 0.15s; text-decoration:none; }
+    .sidebar-link:hover, .sidebar-link.active { background:#eff6ff; color:#2563eb; }
+    .sidebar-link svg { width:18px; height:18px; flex-shrink:0; }
+    .section { background:white; border:1px solid #f1f5f9; border-radius:12px; padding:20px; margin-bottom:16px; }
+    .section-title { font-size:0.75rem; font-weight:700; color:#2563eb; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+    .field-label { font-size:0.75rem; color:#6b7280; font-weight:500; margin-bottom:4px; }
+    .field-hint  { font-size:0.7rem; color:#9ca3af; margin-top:3px; }
+    .field-input { width:100%; padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.875rem; color:#111827; outline:none; transition:border 0.15s; background:white; }
+    .field-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px #eff6ff; }
+    .field-input[readonly] { background:#f9fafb; color:#6b7280; }
+    .btn-primary   { background:#2563eb; color:white; padding:8px 20px; border-radius:8px; font-size:0.875rem; font-weight:500; cursor:pointer; border:none; transition:background 0.15s; display:inline-flex; align-items:center; gap:6px; }
+    .btn-primary:hover   { background:#1d4ed8; }
+    .btn-primary:disabled { opacity:0.6; cursor:not-allowed; }
+    .btn-secondary { background:white; color:#374151; padding:8px 20px; border-radius:8px; font-size:0.875rem; font-weight:500; cursor:pointer; border:1px solid #e5e7eb; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+    .btn-secondary:hover { border-color:#2563eb; color:#2563eb; }
+    .btn-danger    { background:#fee2e2; color:#dc2626; padding:8px 20px; border-radius:8px; font-size:0.875rem; font-weight:500; cursor:pointer; border:none; transition:background 0.15s; display:inline-flex; align-items:center; gap:6px; }
+    .btn-danger:hover    { background:#fecaca; }
+    .toggle-wrap { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#f8fafc; border:1px solid #f1f5f9; border-radius:8px; }
+    .eye-btn { position:absolute; right:10px; top:50%; transform:translateY(-50%); color:#9ca3af; background:none; border:none; cursor:pointer; padding:2px; line-height:0; }
+    .eye-btn:hover { color:#4b5563; }
+    .toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:10px; font-size:0.875rem; font-weight:500; z-index:999; transform:translateY(80px); opacity:0; transition:all 0.3s; max-width:380px; pointer-events:none; }
+    .toast.show { transform:translateY(0); opacity:1; }
+    .toast.success { background:#d1fae5; color:#065f46; }
+    .toast.error   { background:#fee2e2; color:#991b1b; }
+    .toast.warning { background:#fef3c7; color:#92400e; }
+    .toast.info    { background:#dbeafe; color:#1e40af; }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden bg-slate-50">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-100 flex flex-col flex-shrink-0 h-screen transform -translate-x-full md:translate-x-0 md:relative transition-transform duration-300 ease-in-out">
+
+  <div class="p-5 border-b border-gray-100">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">FM</div>
+      <div>
+        <div class="text-sm font-semibold text-gray-900">FM Monitor</div>
+        <div class="text-xs text-gray-400 font-mono" id="sidebar-frequency">— MHz</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+    <a href="/" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="/config" class="sidebar-link active">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+      Configuration
+    </a>
+    <a href="/stats" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Statistiques
+    </a>
+    <a href="/about" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      À propos
+    </a>
+    <a href="https://github.com/LyonelB/fm-monitor" target="_blank" class="sidebar-link">
+      <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      GitHub
+    </a>
+  </nav>
+
+  <div class="p-4 border-t border-gray-100">
+    <a href="/logout" class="sidebar-link" style="color:#f87171" onmouseover="this.style.background='#fff1f2';this.style.color='#dc2626'" onmouseout="this.style.background='';this.style.color='#f87171'">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      Déconnexion
+    </a>
+  </div>
+</aside>
+
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/30 z-40 hidden md:hidden" onclick="closeSidebar()"></div>
+<!-- ═══ MAIN ═══ -->
+<main class="flex-1 overflow-y-auto">
+
+  <header class="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10">
+    <div class="flex items-center gap-2">
+      <button class="md:hidden text-gray-500 hover:text-gray-700 flex-shrink-0 mr-2" onclick="toggleSidebar()">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <h1 class="text-base font-semibold text-gray-900">Configuration</h1>
+    </div>
+    <p class="text-xs text-gray-400 mt-0.5">Paramètres du monitoring FM</p>
+  </header>
+
+  <div class="p-6 max-w-3xl">
+
+    <!-- ── 0. SCAN DONGLE ───────────────────────────────────────── -->
+    <div class="section" id="scan-section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        0. Source d'entrée
+      </div>
+      <div class="flex items-center gap-4 mb-4">
+        <button onclick="scanDongle()" id="btn-scan" class="btn-primary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Scan dongle
+        </button>
+        <span id="scan-status" class="text-xs text-gray-400">Cliquez pour détecter les dongles connectés</span>
+      </div>
+      <div id="scan-results" class="hidden">
+        <div id="scan-found" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- ── 1. RTL-SDR & STATION ───────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        1. RTL-SDR &amp; Station
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <div class="field-label">Fréquence FM</div>
+          <input type="text" id="frequency" class="field-input" placeholder="88.6M">
+          <div class="field-hint">Format : 88.6M, 107.5M…</div>
+        </div>
+        <div>
+          <div class="field-label">Nom de la station</div>
+          <input type="text" id="station-name" class="field-input" placeholder="Graffiti Radio">
+          <div class="field-hint">Affiché dans l'interface</div>
+        </div>
+        <div>
+          <div class="field-label">Gain</div>
+          <input type="text" id="gain" class="field-input" placeholder="40" maxlength="5" title="-1 ou auto pour gain automatique">
+          <div class="field-hint">0 à 50 dB</div>
+        </div>
+      </div>
+      <input type="hidden" id="silence-threshold" value="-20">
+    </div>
+
+    <!-- ── 2. SURVEILLANCE & SEUILS ───────────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        2. Surveillance &amp; Seuils
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <div class="field-label">Seuil modulation (dB std)</div>
+          <input type="number" id="modulation-std-threshold" class="field-input" placeholder="0.5" step="0.1" min="0.1" max="5">
+          <div class="field-hint">Signal normal ≈ 2.0 dB — recommandé : 0.5 à 1.5</div>
+        </div>
+        <div>
+          <div class="field-label">Seuil perte émetteur (dBFS)</div>
+          <input type="number" id="signal-lost-threshold" class="field-input" placeholder="-50">
+          <div class="field-hint">Niveau en dessous duquel l'émetteur est hors ligne</div>
+        </div>
+        <div>
+          <div class="field-label">Délai alerte modulation (s)</div>
+          <input type="number" id="modulation-alert-delay" class="field-input" placeholder="30">
+          <div class="field-hint">Durée sans modulation avant alerte</div>
+        </div>
+        <div>
+          <div class="field-label">Délai alerte émetteur (s)</div>
+          <input type="number" id="silence-duration" class="field-input" placeholder="10">
+          <div class="field-hint">Durée sans porteuse avant alerte</div>
+        </div>
+        <div>
+          <div class="field-label">Délai alerte RDS absent (s)</div>
+          <input type="number" id="rds-timeout" class="field-input" placeholder="120">
+          <div class="field-hint">Durée sans signal RDS avant alerte</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3. EMAIL ────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        3. Alertes email (Gmail)
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <div class="field-label">Email expéditeur</div>
+          <input type="email" id="sender-email" class="field-input" placeholder="votre.email@gmail.com">
+        </div>
+        <div>
+          <div class="field-label">Mot de passe application</div>
+          <div class="relative">
+            <input type="password" id="sender-password" class="field-input" placeholder="Laisser vide pour ne pas modifier" style="padding-right:36px">
+            <button type="button" class="eye-btn" onclick="togglePassword()">
+              <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="field-hint"><a href="https://support.google.com/accounts/answer/185833" target="_blank" class="text-blue-500 hover:underline">→ Créer un mot de passe application Gmail</a></div>
+        </div>
+        <div class="col-span-2">
+          <div class="field-label">Emails destinataires</div>
+          <input type="text" id="recipient-emails" class="field-input" placeholder="alerte1@exemple.com, alerte2@exemple.com">
+          <div class="field-hint">Séparer par des virgules</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button type="button" onclick="sendTestEmail()" id="test-email-btn" class="btn-secondary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          Email de test
+        </button>
+        <span id="test-email-result" class="text-xs text-gray-400 hidden"></span>
+      </div>
+    </div>
+
+    <!-- ── 4. RÉSEAU ───────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+        4. Réseau
+      </div>
+      <div class="toggle-wrap mb-4">
+        <div>
+          <div class="text-xs font-semibold text-gray-700">Mode réseau</div>
+          <div class="text-xs text-gray-400 mt-0.5">DHCP (automatique) ou IP fixe (manuelle)</div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="network-mode" class="sr-only peer" checked>
+          <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+          <span class="ml-2 text-xs font-medium text-gray-700" id="network-mode-label">DHCP</span>
+        </label>
+      </div>
+
+      <div id="static-ip-config" class="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <div class="field-label">Adresse IP</div>
+            <input type="text" id="ip-address" class="field-input" placeholder="192.168.1.100">
+          </div>
+          <div>
+            <div class="field-label">Masque de sous-réseau</div>
+            <input type="text" id="subnet-mask" class="field-input" placeholder="255.255.255.0">
+          </div>
+          <div>
+            <div class="field-label">Passerelle</div>
+            <input type="text" id="gateway" class="field-input" placeholder="192.168.1.1">
+          </div>
+          <div>
+            <div class="field-label">DNS principal</div>
+            <input type="text" id="dns-primary" class="field-input" placeholder="8.8.8.8">
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-100 pt-4">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">WiFi</div>
+        <div class="toggle-wrap mb-4">
+          <div>
+            <div class="text-xs font-semibold text-gray-700">WiFi système</div>
+            <div class="text-xs text-gray-400 mt-0.5">Activer ou désactiver la radio WiFi</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="wifi-toggle" class="sr-only peer">
+            <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+            <span class="ml-2 text-xs font-medium text-gray-700" id="wifi-toggle-label">Chargement...</span>
+          </label>
+        </div>
+        <div id="wifi-credentials" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div class="field-label">SSID (nom du réseau)</div>
+            <input type="text" id="wifi-ssid" class="field-input" placeholder="MonReseauWiFi">
+          </div>
+          <div>
+            <div class="field-label">Mot de passe WiFi</div>
+            <div class="relative">
+              <input type="password" id="wifi-password" class="field-input" placeholder="••••••••" style="padding-right:36px">
+              <button type="button" class="eye-btn" onclick="toggleWifiPassword()">
+                <svg id="wifi-eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+            <div class="field-hint">Laisser vide pour ne pas modifier</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 5. AUTHENTIFICATION ─────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        5. Authentification
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <div class="field-label">Utilisateur actuel</div>
+          <input type="text" id="current-username" class="field-input" readonly>
+        </div>
+        <div>
+          <div class="field-label">Nouveau nom d'utilisateur</div>
+          <input type="text" id="new-username" class="field-input" placeholder="Laisser vide pour ne pas changer">
+        </div>
+        <div></div>
+        <div>
+          <div class="field-label">Nouveau mot de passe</div>
+          <div class="relative">
+            <input type="password" id="new-password" class="field-input" placeholder="Min. 8 caractères" style="padding-right:36px">
+            <button type="button" class="eye-btn" onclick="toggleNewPassword()">
+              <svg id="new-password-eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Confirmer le mot de passe</div>
+          <div class="relative">
+            <input type="password" id="confirm-password" class="field-input" placeholder="Retapez le mot de passe" style="padding-right:36px">
+            <button type="button" class="eye-btn" onclick="toggleConfirmPassword()">
+              <svg id="confirm-password-eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 6. VOLUME DAC+ ──────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H2v6h4l5 4V5z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.54 8.46a5 5 0 010 7.07"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.07 4.93a10 10 0 010 14.14"/>
+        </svg>
+        6. Volume de sortie DAC+
+      </div>
+      <div class="flex items-center gap-4">
+        <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H2v6h4l5 4V5z"/>
+        </svg>
+        <input type="range" id="dac-volume" min="0" max="100" value="80"
+          class="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          oninput="onVolumeInput(this.value)"
+          onchange="applyVolume(this.value)">
+        <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H2v6h4l5 4V5z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.54 8.46a5 5 0 010 7.07"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.07 4.93a10 10 0 010 14.14"/>
+        </svg>
+        <span id="dac-volume-value" class="w-10 text-right font-mono text-sm font-semibold text-gray-900">80%</span>
+        <span id="dac-volume-status" class="text-xs text-gray-400 w-16 text-right"></span>
+      </div>
+      <div class="field-hint mt-2">Appliqué immédiatement via ALSA sur la carte DAC+ (contrôle <code>Digital</code>).</div>
+    </div>
+
+    <!-- ── 7. SAUVEGARDE & RESTAURATION ───────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+        7. Sauvegarde &amp; Restauration
+      </div>
+      <div class="field-hint mb-4">Le fichier ZIP contient : <code>config.json</code>, <code>.env</code> et les certificats SSL.</div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <a href="/api/config/export" class="btn-secondary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Exporter la configuration
+        </a>
+        <label class="btn-secondary cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span id="import-label-text">Importer un backup</span>
+          <input type="file" id="importInput" accept=".zip" class="hidden" onchange="importConfig(this)">
+        </label>
+        <span id="import-result" class="text-xs text-gray-400 hidden"></span>
+      </div>
+    </div>
+
+    <!-- ── Boutons ─────────────────────────────────────────────── -->
+    <div class="flex items-center justify-between pb-10">
+      <div class="flex items-center gap-3">
+        <button id="save-btn" onclick="saveConfig()" class="btn-primary">
+          <svg id="save-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span id="save-label">Enregistrer la configuration</span>
+        </button>
+        <button onclick="loadConfig()" class="btn-secondary">Annuler</button>
+      </div>
+      <button onclick="restartMonitoring()" class="btn-danger">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Redémarrer monitoring
+      </button>
+    </div>
+
+    <!-- ── WEBHOOK ──────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Push Webhook
+      </div>
+      <div class="toggle-wrap mb-4">
+        <div>
+          <div class="text-sm font-medium text-gray-700">Activer le push webhook</div>
+          <div class="field-hint">Envoie les données en temps réel vers une URL externe</div>
+        </div>
+        <button id="webhook-toggle" onclick="toggleWebhook()" class="relative w-11 h-6 rounded-full transition-colors bg-gray-200" aria-checked="false">
+          <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"></span>
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <div class="field-label">URL du endpoint</div>
+          <input type="url" id="webhook-url" class="field-input" placeholder="https://ton-site.fr/receiver.php">
+        </div>
+        <div>
+          <div class="field-label">Intervalle (secondes)</div>
+          <select id="webhook-interval" class="field-input">
+            <option value="1">1 seconde</option>
+            <option value="5">5 secondes</option>
+            <option value="10">10 secondes</option>
+            <option value="30">30 secondes</option>
+            <option value="60">1 minute</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-hint mb-4">
+        Payload JSON envoyé : <code class="bg-gray-100 px-1 rounded text-xs">station, frequency, signal_db, signal_ok, ps, rt, pi, stereo, alert, timestamp</code>
+      </div>
+      <button onclick="saveWebhook()" class="btn-primary">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        Sauvegarder
+      </button>
+    </div>
+
+  </div>
+</main>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+  // ═══════════════════════════════════════════════
+  // CSRF
+  // ═══════════════════════════════════════════════
+  function getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+  }
+
+  // ═══════════════════════════════════════════════
+  // TOAST
+  // ═══════════════════════════════════════════════
+  function showToast(text, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = text;
+    toast.className = `toast ${type} show`;
+    setTimeout(() => { toast.className = `toast ${type}`; }, 4000);
+  }
+
+  // ═══════════════════════════════════════════════
+  // TOGGLE PASSWORDS
+  // ═══════════════════════════════════════════════
+  const EYE_OPEN  = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+  const EYE_CLOSE = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>';
+
+  function togglePass(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon  = document.getElementById(iconId);
+    input.type  = input.type === 'password' ? 'text' : 'password';
+    icon.innerHTML = input.type === 'password' ? EYE_OPEN : EYE_CLOSE;
+  }
+  function togglePassword()        { togglePass('sender-password',  'eye-icon'); }
+  function toggleWifiPassword()    { togglePass('wifi-password',     'wifi-eye-icon'); }
+  function toggleNewPassword()     { togglePass('new-password',      'new-password-eye-icon'); }
+  function toggleConfirmPassword() { togglePass('confirm-password',  'confirm-password-eye-icon'); }
+
+  // ═══════════════════════════════════════════════
+  // NETWORK MODE TOGGLE
+  // ═══════════════════════════════════════════════
+  const networkModeToggle = document.getElementById('network-mode');
+  const networkModeLabel  = document.getElementById('network-mode-label');
+  const staticIpConfig    = document.getElementById('static-ip-config');
+
+  networkModeToggle.addEventListener('change', function() {
+    if (this.checked) {
+      networkModeLabel.textContent = 'DHCP';
+      staticIpConfig.classList.add('hidden');
+    } else {
+      networkModeLabel.textContent = 'IP Fixe';
+      staticIpConfig.classList.remove('hidden');
+    }
+  });
+
+  // ═══════════════════════════════════════════════
+  // LOAD CONFIG
+  // ═══════════════════════════════════════════════
+  async function loadConfig() {
+    try {
+      const response = await fetch('/api/config/full', {credentials: 'include'});
+      const config   = await response.json();
+
+      const frequency   = config.rtl_sdr?.frequency || config.station?.frequency || '';
+      let recipientsStr = '';
+      if (config.email?.recipient_emails) {
+        const r = config.email.recipient_emails;
+        recipientsStr = typeof r === 'string' ? r : r.join(', ');
+      }
+
+      document.getElementById('frequency').value                = frequency;
+      document.getElementById('station-name').value             = config.station?.name || '';
+      document.getElementById('gain').value                     = config.rtl_sdr?.gain || '';
+      document.getElementById('silence-threshold').value        = config.audio?.silence_threshold || -20;
+      document.getElementById('silence-duration').value         = config.audio?.silence_duration || 10;
+      document.getElementById('modulation-alert-delay').value   = config.audio?.modulation_alert_delay || 30;
+      document.getElementById('modulation-std-threshold').value = config.audio?.modulation_std_threshold || 0.5;
+      document.getElementById('signal-lost-threshold').value    = config.audio?.signal_lost_threshold || -50;
+      document.getElementById('rds-timeout').value              = config.audio?.rds_timeout || 120;
+      document.getElementById('sender-email').value             = config.email?.sender_email || '';
+      document.getElementById('sender-password').value          = '';
+      document.getElementById('recipient-emails').value         = recipientsStr;
+
+      document.getElementById('sidebar-frequency').textContent  = frequency.replace('M', ' MHz');
+
+      if (config.network) {
+        const isDHCP = config.network.mode === 'dhcp';
+        networkModeToggle.checked = isDHCP;
+        networkModeLabel.textContent = isDHCP ? 'DHCP' : 'IP Fixe';
+        if (!isDHCP) {
+          staticIpConfig.classList.remove('hidden');
+          document.getElementById('ip-address').value  = config.network.ip || '';
+          document.getElementById('subnet-mask').value = config.network.netmask || '';
+          document.getElementById('gateway').value     = config.network.gateway || '';
+          document.getElementById('dns-primary').value = config.network.dns || '';
+        }
+        document.getElementById('wifi-ssid').value = config.network.wifi_ssid || '';
+      }
+
+      if (config.auth?.username)
+        document.getElementById('current-username').value = config.auth.username;
+
+    } catch (error) {
+      console.error('Erreur chargement config:', error);
+      showToast('Erreur lors du chargement de la configuration', 'error');
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // EMAIL DE TEST
+  // ═══════════════════════════════════════════════
+  async function sendTestEmail() {
+    const btn    = document.getElementById('test-email-btn');
+    const result = document.getElementById('test-email-result');
+    btn.disabled = true;
+    result.className = 'text-xs hidden';
+    try {
+      const resp = await fetch('/api/test-email', {credentials: 'include', 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }
+      });
+      const data = await resp.json();
+      if (data.status === 'success') {
+        result.textContent = '✓ Email envoyé';
+        result.className   = 'text-xs text-green-600';
+      } else {
+        result.textContent = '✗ ' + (data.message || 'Erreur inconnue');
+        result.className   = 'text-xs text-red-600';
+      }
+    } catch (e) {
+      result.textContent = '✗ Erreur réseau';
+      result.className   = 'text-xs text-red-600';
+    } finally {
+      btn.disabled = false;
+      result.classList.remove('hidden');
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // SAVE CONFIG
+  // ═══════════════════════════════════════════════
+  async function saveConfig() {
+    const newUsername     = document.getElementById('new-username').value.trim();
+    const newPassword     = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+
+    if (newPassword || confirmPassword) {
+      if (newPassword !== confirmPassword) {
+        showToast('Les mots de passe ne correspondent pas', 'error'); return;
+      }
+      if (newPassword.length < 8) {
+        showToast('Le mot de passe doit contenir au moins 8 caractères', 'error'); return;
+      }
+    }
+
+    const isDHCP = networkModeToggle.checked;
+    const config = {
+      station: {
+        name:      document.getElementById('station-name').value,
+        frequency: document.getElementById('frequency').value
+      },
+      rtl_sdr: {
+        frequency: document.getElementById('frequency').value,
+        gain:      parseInt(document.getElementById('gain').value) || 0
+      },
+      audio: {
+        silence_threshold:        parseFloat(document.getElementById('silence-threshold').value) || -20,
+        silence_duration:         parseInt(document.getElementById('silence-duration').value) || 10,
+        modulation_alert_delay:   parseInt(document.getElementById('modulation-alert-delay').value) || 30,
+        modulation_std_threshold: parseFloat(document.getElementById('modulation-std-threshold').value) || 0.5,
+        signal_lost_threshold:    parseFloat(document.getElementById('signal-lost-threshold').value) || -50,
+        rds_timeout:              parseInt(document.getElementById('rds-timeout').value) || 120
+      },
+      email: {
+        sender_email:     document.getElementById('sender-email').value,
+        sender_password:  document.getElementById('sender-password').value,
+        recipient_emails: document.getElementById('recipient-emails').value.split(',').map(e => e.trim())
+      },
+      network: {
+        mode:         isDHCP ? 'dhcp' : 'static',
+        ip:           isDHCP ? '' : document.getElementById('ip-address').value,
+        netmask:      isDHCP ? '' : document.getElementById('subnet-mask').value,
+        gateway:      isDHCP ? '' : document.getElementById('gateway').value,
+        dns:          isDHCP ? '' : document.getElementById('dns-primary').value,
+        wifi_ssid:    document.getElementById('wifi-ssid').value,
+        wifi_password:document.getElementById('wifi-password').value
+      }
+    };
+
+    if (newUsername || newPassword) {
+      config.auth = {};
+      if (newUsername) config.auth.username = newUsername;
+      if (newPassword) config.auth.password = newPassword;
+    }
+
+    const btn   = document.getElementById('save-btn');
+    const label = document.getElementById('save-label');
+    const icon  = document.getElementById('save-icon');
+
+    btn.disabled = true;
+    icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/></circle>';
+    label.textContent = 'Enregistrement…';
+
+    try {
+      const resp   = await fetch('/api/config/save', {credentials: 'include', 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+        body: JSON.stringify(config)
+      });
+      const result = await resp.json();
+
+      if (result.status === 'success') {
+        label.textContent = 'Redémarrage…';
+        showToast('Configuration enregistrée — redémarrage du monitoring…', 'info');
+
+        setTimeout(async () => {
+          try {
+            const restartResp = await fetch('/api/restart', {credentials: 'include', 
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }
+            });
+            const restartData = await restartResp.json();
+            if (restartData.status === 'success') {
+              showToast('Configuration enregistrée et monitoring redémarré !', 'success');
+            } else {
+              showToast('Config enregistrée — échec du redémarrage', 'warning');
+            }
+          } catch (e) {
+            showToast('Config enregistrée — échec du redémarrage', 'warning');
+          } finally {
+            setTimeout(() => {
+              btn.disabled = false;
+              icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+              label.textContent = 'Enregistrer la configuration';
+              loadConfig();
+            }, 2000);
+          }
+        }, 500);
+
+      } else {
+        showToast('Erreur : ' + (result.message || 'Échec de la sauvegarde'), 'error');
+        btn.disabled = false;
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+        label.textContent = 'Enregistrer la configuration';
+      }
+    } catch (error) {
+      showToast('Erreur lors de la sauvegarde', 'error');
+      btn.disabled = false;
+      icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+      label.textContent = 'Enregistrer la configuration';
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // IMPORT / EXPORT
+  // ═══════════════════════════════════════════════
+  async function importConfig(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (!confirm(`Importer "${file.name}" ?\n\nL'ancienne config sera sauvegardée dans backup_before_import/\nLe service fm-monitor redémarrera automatiquement.`)) {
+      input.value = ''; return;
+    }
+
+    const labelText = document.getElementById('import-label-text');
+    const result    = document.getElementById('import-result');
+    labelText.textContent = 'Import en cours…';
+    result.className = 'text-xs hidden';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const resp = await fetch('/api/config/import', { method: 'POST', body: formData, credentials: 'include' });
+      const data = await resp.json();
+      if (data.success) {
+        result.textContent = `✓ Restauré (v${data.version} — ${data.date?.slice(0,10)})`;
+        result.className   = 'text-xs text-green-600';
+        showToast('Restauration OK — redémarrage du service en cours…', 'info');
+        setTimeout(() => location.reload(), 6000);
+      } else {
+        result.textContent = '✗ ' + data.error;
+        result.className   = 'text-xs text-red-600';
+        showToast('Erreur import : ' + data.error, 'error');
+      }
+    } catch (e) {
+      result.textContent = '✗ Erreur réseau';
+      result.className   = 'text-xs text-red-600';
+      showToast("Erreur réseau lors de l'import", 'error');
+    } finally {
+      labelText.textContent = 'Importer un backup';
+      result.classList.remove('hidden');
+      input.value = '';
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // VOLUME DAC+
+  // ═══════════════════════════════════════════════
+  let volumeDebounce = null;
+
+  function onVolumeInput(val) {
+    document.getElementById('dac-volume-value').textContent = val + '%';
+  }
+
+  function applyVolume(val) {
+    clearTimeout(volumeDebounce);
+    volumeDebounce = setTimeout(async () => {
+      const status = document.getElementById('dac-volume-status');
+      status.textContent = 'Application…';
+      status.className   = 'text-xs text-orange-500 w-16 text-right';
+      try {
+        const resp = await fetch('/api/volume/set', {credentials: 'include', 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+          body: JSON.stringify({ volume: parseInt(val) })
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+          status.textContent = '✓ Appliqué';
+          status.className   = 'text-xs text-green-600 w-16 text-right';
+          setTimeout(() => { status.textContent = ''; }, 2000);
+        } else {
+          status.textContent = '✗ Erreur';
+          status.className   = 'text-xs text-red-600 w-16 text-right';
+        }
+      } catch (e) {
+        status.textContent = '✗ Erreur';
+        status.className   = 'text-xs text-red-600 w-16 text-right';
+      }
+    }, 200);
+  }
+
+  async function loadVolume() {
+    try {
+      const resp = await fetch('/api/volume', {credentials: 'include'});
+      const data = await resp.json();
+      if (data.status === 'success') {
+        document.getElementById('dac-volume').value = data.volume;
+        document.getElementById('dac-volume-value').textContent = data.volume + '%';
+      }
+    } catch (e) {
+      console.warn('Volume DAC+ non disponible:', e);
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // RESTART MONITORING
+  // ═══════════════════════════════════════════════
+  async function restartMonitoring() {
+    if (!confirm('Êtes-vous sûr de vouloir redémarrer le monitoring ?')) return;
+    try {
+      const resp = await fetch('/api/restart', {credentials: 'include', 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }
+      });
+      const data = await resp.json();
+      if (data.status === 'success') {
+        showToast('Monitoring redémarré avec succès', 'success');
+        setTimeout(() => loadConfig(), 2000);
+      } else {
+        showToast('Erreur : ' + (data.message || 'Échec du redémarrage'), 'error');
+      }
+    } catch (error) {
+      showToast('Erreur lors du redémarrage', 'error');
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+
+  // ── WiFi Toggle ────────────────────────────────────────────
+  async function loadWifiStatus() {
+    try {
+      const resp = await fetch('/api/wifi/status', {credentials: 'include'});
+      const data = await resp.json();
+      const toggle = document.getElementById('wifi-toggle');
+      const label  = document.getElementById('wifi-toggle-label');
+      if (toggle && label) {
+        toggle.checked = data.enabled;
+        label.textContent = data.enabled ? 'Activé' : 'Désactivé';
+      }
+    } catch(e) {
+      const label = document.getElementById('wifi-toggle-label');
+      if (label) label.textContent = 'Indisponible';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadWifiStatus();
+    const toggle = document.getElementById('wifi-toggle');
+    if (toggle) {
+      toggle.addEventListener('change', async () => {
+        const enable = toggle.checked;
+        const label  = document.getElementById('wifi-toggle-label');
+        try {
+          const csrfResp = await fetch('/api/csrf-token', {credentials: 'include'});
+          const { csrf_token } = await csrfResp.json();
+          const resp = await fetch('/api/wifi/toggle', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf_token},
+            body: JSON.stringify({enable})
+          });
+          const data = await resp.json();
+          if (data.status === 'success') {
+            label.textContent = enable ? 'Activé' : 'Désactivé';
+            const creds = document.getElementById('wifi-credentials');
+            if (creds) creds.style.display = enable ? '' : 'none';
+            showToast('WiFi ' + (enable ? 'activé' : 'désactivé'), 'success');
+          } else {
+            toggle.checked = !enable;
+            label.textContent = !enable ? 'Activé' : 'Désactivé';
+            showToast('Erreur WiFi : ' + data.message, 'error');
+          }
+        } catch(e) {
+          toggle.checked = !enable;
+          showToast('Erreur WiFi : ' + e.message, 'error');
+        }
+      });
+    }
+  });
+
+  // INIT
+  // ═══════════════════════════════════════════════
+  loadConfig();
+  loadVolume();
+  // ── Scan dongle ────────────────────────────────────────────
+  async function scanDongle() {
+    const btn = document.getElementById('btn-scan');
+    const status = document.getElementById('scan-status');
+    const results = document.getElementById('scan-results');
+    const found = document.getElementById('scan-found');
+
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Scan en cours...`;
+    status.textContent = 'Détection en cours, veuillez patienter...';
+    results.classList.add('hidden');
+
+    try {
+      const csrfResp = await fetch('/api/csrf-token', {credentials: 'include'});
+      const { csrf_token } = await csrfResp.json();
+      const resp = await fetch('/api/scan-dongle', {credentials: 'include', 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf_token }
+      });
+      const data = await resp.json();
+
+      found.innerHTML = '';
+      const hasTef = data.tef && data.tef.length > 0;
+      const hasRtl = data.rtlsdr;
+      if (!hasTef && !hasRtl) {
+        found.innerHTML = `<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">Aucun dongle détecté. Vérifiez les branchements USB.</div>`;
+      } else if (hasTef && !hasRtl) {
+        found.innerHTML = `
+          <div class="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 mb-3">
+            TEF détecté sur ${data.tef[0]} — source unique, sélection automatique.
+          </div>`;
+        selectSource('tef', data.tef[0]);
+      } else if (!hasTef && hasRtl) {
+        found.innerHTML = `
+          <div class="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 mb-3">
+            RTL-SDR Blog V4 détecté. Choisissez le décodeur :
+          </div>
+          <div class="flex gap-3">
+            <button onclick="selectSource('rtlsdr', '')" class="btn-secondary">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+              rtl_fm (mono)
+            </button>
+            <button onclick="selectSource('gnuradio', '')" class="btn-primary">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
+              GNU Radio (stéréo)
+            </button>
+          </div>`;
+      } else {
+        // Les deux sont détectés — choix proposé
+        found.innerHTML = `
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 mb-3">
+            Deux dongles détectés. Choisissez la source active :
+          </div>
+          <div class="flex gap-3">
+            <button onclick="selectSource('tef', '${data.tef[0]}')" class="btn-primary">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              TEF (${data.tef[0]})
+            </button>
+            <button onclick="selectSource('rtlsdr', '')" class="btn-secondary">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+              RTL-SDR Blog V4
+            </button>
+          </div>`;
+      }
+
+      results.classList.remove('hidden');
+      status.textContent = hasTef || hasRtl ? 'Détection terminée.' : 'Aucun dongle trouvé.';
+    } catch(e) {
+      status.textContent = 'Erreur lors du scan : ' + e.message;
+      showToast('Erreur scan dongle : ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Scan dongle`;
+    }
+  }
+
+  async function selectSource(source, port) {
+    const csrfResp = await fetch('/api/csrf-token', {credentials: 'include'});
+    const { csrf_token } = await csrfResp.json();
+    try {
+      const resp = await fetch('/api/select-source', {credentials: 'include', 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf_token },
+        body: JSON.stringify({ source, port , credentials: 'include'})
+      });
+      const data = await resp.json();
+      if (data.status === 'success') {
+        const label = source === 'tef' ? 'TEF (' + port + ')' : source === 'gnuradio' ? 'GNU Radio (stéréo)' : 'RTL-SDR Blog V4 (rtl_fm)';
+        showToast('Source ' + label + ' activée — redémarrage en cours…', 'success');
+        document.getElementById('scan-found').innerHTML += `
+          <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            ✓ Source ${label} activée. FM Monitor redémarre…
+          </div>`;
+      } else {
+        showToast('Erreur : ' + data.message, 'error');
+      }
+    } catch(e) {
+      showToast('Erreur sélection source : ' + e.message, 'error');
+    }
+  }
+
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('-translate-x-full');
+      document.getElementById('sidebar-overlay').classList.toggle('hidden');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebar-overlay').classList.add('hidden');
+    }
+  
+    // ── Webhook ──────────────────────────────────────────────────
+    async function loadWebhook() {
+      const res = await fetch('/api/webhook', {credentials: 'include'});
+      const d = await res.json();
+      document.getElementById('webhook-url').value = d.url || '';
+      document.getElementById('webhook-interval').value = d.interval || 1;
+      setWebhookToggle(d.enabled || false);
+    }
+
+    function setWebhookToggle(enabled) {
+      const btn = document.getElementById('webhook-toggle');
+      btn.setAttribute('aria-checked', enabled);
+      btn.classList.toggle('bg-blue-500', enabled);
+      btn.classList.toggle('bg-gray-200', !enabled);
+      btn.querySelector('span').style.transform = enabled ? 'translateX(20px)' : '';
+    }
+
+    function toggleWebhook() {
+      const btn = document.getElementById('webhook-toggle');
+      const enabled = btn.getAttribute('aria-checked') !== 'true';
+      setWebhookToggle(enabled);
+    }
+
+    async function saveWebhook() {
+      const csrf = await getCSRFToken();
+      const payload = {
+        enabled:  document.getElementById('webhook-toggle').getAttribute('aria-checked') === 'true',
+        url:      document.getElementById('webhook-url').value.trim(),
+        interval: parseInt(document.getElementById('webhook-interval').value)
+      };
+      const res = await fetch('/api/webhook', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const d = await res.json();
+      showToast(d.message || 'Webhook sauvegardé', d.status === 'ok' ? 'success' : 'error');
+    }
+
+    loadWebhook();
+</script>
+</body>
+</html>

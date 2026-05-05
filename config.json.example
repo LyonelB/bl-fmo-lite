@@ -1,0 +1,50 @@
+{
+  "tuner": {
+    "type": "si4689",
+    "frequency": "88.6M",
+    "radio_py_path": "/home/graffiti/Digital-Radio-for-Raspberry-Pi/radio.py",
+    "api_port": 8686,
+    "alsa_device": "plughw:CARD=si4689i2s,DEV=0"
+  },
+
+  "audio": {
+    "icecast_url": "http://localhost:8000/stream.mp3",
+    "icecast_password": "hackme",
+    "bitrate": "128k",
+    "sample_rate": "44100",
+    "channels": "2",
+    "silence_threshold": -50,
+    "silence_duration": 30,
+    "check_interval": 5
+  },
+
+  "station": {
+    "name": "Graffiti Radio",
+    "frequency_display": "88.6 MHz"
+  },
+
+  "email": {
+    "enabled": false,
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "use_tls": true,
+    "sender_email": "votre.email@gmail.com",
+    "sender_password": "votre_mot_de_passe_application",
+    "recipient_emails": ["destinataire@example.com"],
+    "cooldown_minutes": 30
+  },
+
+  "web": {
+    "host": "0.0.0.0",
+    "port": 5000,
+    "secret_key": "changez-moi-en-production",
+    "username": "admin",
+    "password_hash": ""
+  },
+
+  "monitoring": {
+    "check_interval": 10,
+    "signal_loss_threshold": 5,
+    "max_recording_size_mb": 50
+  }
+}
