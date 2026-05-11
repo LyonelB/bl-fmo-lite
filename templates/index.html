@@ -252,35 +252,6 @@
 
         <div class="border-t border-gray-100"></div>
 
-        <!-- Multipath -->
-        <div>
-          <div class="flex justify-between items-baseline mb-1">
-            <span class="text-xs font-semibold text-gray-600">Multipath <span class="font-normal text-gray-400">réflexions</span></span>
-            <span class="text-sm font-mono font-semibold text-gray-800" id="quality-mp-val">— %</span>
-          </div>
-          <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-            <div id="quality-mp-bar" class="vu-bar w-0" style="background:#22c55e;height:100%"></div>
-          </div>
-          <div class="flex justify-between text-xs text-gray-400 font-mono mt-0.5"><span>0</span><span>25</span><span>50</span><span>100 %</span></div>
-        </div>
-
-        <div class="border-t border-gray-100"></div>
-
-        <!-- Offset fréquence -->
-        <div>
-          <div class="flex justify-between items-baseline mb-1">
-            <span class="text-xs font-semibold text-gray-600">Offset <span class="font-normal text-gray-400">fréquence</span></span>
-            <span class="text-sm font-mono font-semibold text-gray-800" id="quality-offset-val">— Hz</span>
-          </div>
-          <div class="relative rounded-full bg-gray-100 overflow-hidden" style="height:6px">
-            <div style="position:absolute;left:50%;top:0;width:1px;height:100%;background:#d1d5db"></div>
-            <div id="quality-offset-bar" style="position:absolute;top:0;height:100%;border-radius:3px;transition:all 0.3s;background:#3b82f6;width:2px;left:50%"></div>
-          </div>
-          <div class="flex justify-between text-xs text-gray-400 font-mono mt-0.5"><span>−10 kHz</span><span>0</span><span>+10 kHz</span></div>
-        </div>
-
-        <div class="border-t border-gray-100"></div>
-
         <!-- Puissance RF -->
         <div>
           <div class="flex justify-between items-baseline mb-1">
@@ -291,17 +262,6 @@
             <div id="quality-power-bar" class="vu-bar w-0 bg-green-400" style="height:100%"></div>
           </div>
           <div class="flex justify-between text-xs text-gray-400 font-mono mt-0.5"><span>0</span><span>30</span><span>60 dBf</span></div>
-        </div>
-
-        <div class="border-t border-gray-100"></div>
-
-        <!-- TA / TP RDS -->
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold text-gray-600">TA / TP <span class="font-normal text-gray-400">RDS</span></span>
-          <div class="flex gap-2">
-            <span id="rds-ta-badge" class="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">TA —</span>
-            <span id="rds-tp-badge" class="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">TP —</span>
-          </div>
         </div>
 
       </div><!-- /col droite Qualité RF -->
@@ -589,9 +549,16 @@
     }
 
     // =============================================
-    // QUALITÉ RF (SNR / Multipath / Offset / Stéréo / TA-TP)
+    // QUALITÉ RF (SNR / Puissance / Stéréo)
     // =============================================
     function updateQuality(stats) {
+        // Puissance RF
+        const dbfQ = stats.signal_dbf ?? 0;
+        const pctQ = Math.max(0, Math.min(100, (dbfQ / 60) * 100));
+        const powerVal = document.getElementById("quality-power-val");
+        const powerBar = document.getElementById("quality-power-bar");
+        if (powerVal) powerVal.textContent = dbfQ.toFixed(1) + " dBf";
+        if (powerBar) powerBar.style.width = pctQ + "%";
         // SNR
         const snr = stats.snr ?? null;
         const snrVal = document.getElementById('quality-snr-val');
@@ -603,52 +570,9 @@
             snrBar.style.background = snr >= 40 ? '#22c55e' : snr >= 25 ? '#f59e0b' : '#ef4444';
         } else { snrVal.textContent = '— dB'; snrBar.style.width = '0%'; }
 
-        // Multipath
-        const mp = stats.multipath ?? null;
-        const mpVal = document.getElementById('quality-mp-val');
-        const mpBar = document.getElementById('quality-mp-bar');
-        if (mp !== null) {
-            mpVal.textContent = mp.toFixed(0) + ' %';
-            const pct = Math.max(0, Math.min(100, mp));
-            mpBar.style.width = pct + '%';
-            mpBar.style.background = mp < 25 ? '#22c55e' : mp < 60 ? '#f59e0b' : '#ef4444';
-        } else { mpVal.textContent = '— %'; mpBar.style.width = '0%'; }
 
-        // Offset fréquence
-        const offset = stats.offset_hz ?? null;
-        const offsetVal = document.getElementById('quality-offset-val');
-        const offsetBar = document.getElementById('quality-offset-bar');
-        const MAX_HZ = 10000;
-        if (offset !== null) {
-            const sign = offset >= 0 ? '+' : '';
-            offsetVal.textContent = sign + (offset / 1000).toFixed(2) + ' kHz';
-            const clamp = Math.max(-MAX_HZ, Math.min(MAX_HZ, offset));
-            const absPct = Math.abs(clamp / MAX_HZ);
-            const widthPct = absPct * 50;
-            offsetBar.style.background = absPct < 0.3 ? '#3b82f6' : absPct < 0.7 ? '#f59e0b' : '#ef4444';
-            if (offset >= 0) { offsetBar.style.left = '50%'; offsetBar.style.width = widthPct + '%'; }
-            else { offsetBar.style.left = (50 - widthPct) + '%'; offsetBar.style.width = widthPct + '%'; }
-        } else { offsetVal.textContent = '— Hz'; offsetBar.style.width = '2px'; offsetBar.style.left = '50%'; }
 
-        // Puissance RF
-        const dbf = stats.signal_dbf ?? null;
-        const pwrVal = document.getElementById('quality-power-val');
-        const pwrBar = document.getElementById('quality-power-bar');
-        if (dbf !== null) {
-            pwrVal.textContent = dbf.toFixed(1) + ' dBf';
-            pwrBar.style.width = Math.max(0, Math.min(100, (dbf / 60) * 100)) + '%';
-        } else { pwrVal.textContent = '— dBf'; pwrBar.style.width = '0%'; }
 
-        // Badge Stéréo / Mono
-        const badge = document.getElementById('stereo-badge');
-        const bc = 'text-xs font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full ';
-        if (stats.stereo_present) { badge.textContent = 'Stéréo'; badge.className = bc + 'bg-green-100 text-green-700'; }
-        else if (stats.signal_ok)  { badge.textContent = 'Mono';   badge.className = bc + 'bg-yellow-100 text-yellow-600'; }
-        else                       { badge.textContent = '—';       badge.className = bc + 'bg-gray-100 text-gray-400'; }
-
-        // TA / TP
-        _rdsFlag('rds-ta-badge', 'TA', stats.rds_ta);
-        _rdsFlag('rds-tp-badge', 'TP', stats.rds_tp);
     }
 
     function _rdsFlag(id, label, value) {

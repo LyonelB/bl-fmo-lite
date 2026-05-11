@@ -155,6 +155,11 @@ class FMMonitor:
         )
         self._rds_thread.start()
 
+        # Niveau audio ALSA → dBFS
+#        self._audio_level_thread = threading.Thread(
+#            target=self._audio_level_monitor, daemon=True, name="audio-level"
+#        self._audio_level_thread.start()
+
         # Surveillance signal + alertes
         self._monitor_thread = threading.Thread(
             target=self._monitor_signal, daemon=True, name='monitor'
@@ -351,7 +356,7 @@ class FMMonitor:
 
             except Exception as e:
                 logger.error(f"Erreur poll status: {e}")
-            time.sleep(1)
+            time.sleep(0.25)
 
     def _poll_rds(self):
         """Polling RDS à 1 Hz."""
@@ -622,6 +627,40 @@ class FMMonitor:
     # API PUBLIQUE (compatibilité app.py)
     # ──────────────────────────────────────────────────────────────────
 
+    def _audio_level_monitor(self):
+        """
+        Lit le stream HTTP de radio.py directement via ffmpeg → PCM → RMS → dBFS.
+        Identique à FM Monitor. Connexion independante du relay browser.
+        """
+        import numpy as np, subprocess as _sp
+        stream_url = getattr(self.tuner, 'stream_url', None)
+        if not stream_url:
+            logger.info('Audio level monitor: desactive (pas de stream_url)')
+            return
+        logger.info(f'Audio level monitor: {stream_url}')
+        while self.running:
+            try:
+                proc = _sp.Popen(
+                    ['ffmpeg', '-hide_banner', '-loglevel', 'error',
+                     '-i', stream_url,
+                     '-f', 's16le', '-ar', '44100', '-ac', '1', 'pipe:1'],
+                    stdout=_sp.PIPE, stderr=_sp.DEVNULL
+                )
+                logger.info('Audio level monitor: demarre')
+                chunk_size = 2048  # ~23ms a 44100Hz
+                while self.running:
+                    raw = proc.stdout.read(chunk_size)
+                    if not raw or len(raw) < chunk_size:
+                        break
+                    samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
+                    rms = np.sqrt(np.mean(samples ** 2))
+                    dbfs = 20 * np.log10(rms / 32768.0) if rms > 0 else -100.0
+                    self.add_signal_sample(round(dbfs, 1))
+                proc.kill()
+            except Exception as e:
+                logger.error(f'Audio level monitor error: {e}')
+            if self.running:
+                time.sleep(5)
     def get_stats(self) -> dict:
         with self.stats_lock:
             stats = self.stats.copy()

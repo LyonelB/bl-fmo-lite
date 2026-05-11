@@ -24,7 +24,11 @@ load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('/tmp/bl-fmo-lite.log', mode='a', encoding='utf-8'),
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -293,11 +297,20 @@ def save_config():
 @auth.login_required
 def get_logs():
     try:
+        log_file = '/tmp/bl-fmo-lite.log'
+        import os
+        if os.path.exists(log_file) and os.path.getsize(log_file) > 0:
+            with open(log_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()[-100:]
+            return jsonify({'logs': ''.join(lines)})
+        # Fallback journalctl
         result = subprocess.run(
             ['journalctl', '-u', 'bl-fmo-lite', '-n', '100', '--no-pager'],
             capture_output=True, text=True
         )
-        return jsonify({'logs': result.stdout})
+        if result.stdout and 'No entries' not in result.stdout:
+            return jsonify({'logs': result.stdout})
+        return jsonify({'logs': '-- En attente de logs --'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -425,15 +438,28 @@ def proxy_stream():
         except Exception:
             source = 'http://localhost:8000/stream'
 
-    def generate():
-        try:
-            with req.get(source, stream=True, timeout=5) as r:
-                r.raise_for_status()
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk:
-                        yield chunk
-        except Exception as e:
-            logger.error(f"Erreur proxy stream ({source}): {e}")
+    # SI4689 : utiliser le relay interne (multi-clients)
+    if monitor and hasattr(monitor.tuner, 'stream_listener'):
+        def generate():
+            q = monitor.tuner.stream_listener()
+            try:
+                while True:
+                    chunk = q.get(timeout=10)
+                    yield chunk
+            except Exception:
+                pass
+            finally:
+                monitor.tuner.stream_unlisten(q)
+    else:
+        def generate():
+            try:
+                with req.get(source, stream=True, timeout=5) as r:
+                    r.raise_for_status()
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            yield chunk
+            except Exception as e:
+                logger.error(f"Erreur proxy stream ({source}): {e}")
 
     return app.response_class(
         generate(),

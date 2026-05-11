@@ -12,3 +12,6 @@ recordings/
 *.db
 *.sqlite
 .DS_Store
+data/
+*.log
+*.db
