@@ -1,0 +1,38 @@
+{
+  "tuner": {
+    "type": "tef6686",
+    "frequency": "88.6M",
+    "port": "/dev/ttyACM0",
+    "alsa_device": "hw:Tuner"
+  },
+  "audio": {
+    "icecast_url": "http://localhost:8000/stream.mp3",
+    "icecast_password": "hackme",
+    "bitrate": "128k",
+    "output_rate": "44100",
+    "silence_threshold": -50,
+    "silence_duration": 30,
+    "modulation_alert_delay": 30,
+    "rds_timeout": 120
+  },
+  "station": {
+    "name": "Graffiti Radio",
+    "frequency_display": "88.6 MHz"
+  },
+  "email": {
+    "enabled": false,
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "use_tls": true,
+    "sender_email": "lyonel.bernard@gmail.com",
+    "sender_password": "votre_mot_de_passe_application",
+    "recipient_emails": [
+      "destinataire@example.com"
+    ],
+    "cooldown_minutes": 30
+  },
+  "auth": {
+    "username": "admin",
+    "password_hash": "$2b$12$Zek6aeawJt6aMKJxiLrfpOKV9bc3y1FEDnHeN4yN2aM.aXR38v2z6"
+  }
+}

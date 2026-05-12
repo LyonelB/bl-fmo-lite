@@ -1,37 +1,27 @@
 """
 BL-FMO-LITE — tuners/__init__.py
-Tuner factory: returns the correct backend from config.json.
-"""
+Factory : retourne le bon backend depuis config["tuner"]["type"].
 
+Tuners supportés :
+    si4689            — Raspiaudio Digital Radio HAT (SPI)
+    tef_headless_lite — TEF668X Headless USB Lite (XDR-GTK 115200, audio USB)
+    tef_headless      — TEF668X Headless USB (XDR-GTK 115200, sans audio USB)
+    tef6686           — TEF6686 ESP32 / poste radio (XDR-GTK 19200, sortie jack)
+"""
 from .base import TunerBase
 
-
 def get_tuner(config: dict) -> TunerBase:
-    """
-    Instantiate and return the tuner backend specified in config["tuner"]["type"].
-
-    Supported values:
-        "si4689"   — Raspiaudio Digital Radio HAT (SPI, Raspberry Pi)
-        "tef6686"  — TEF Headless Lite Se (I2C/SPI, Raspberry Pi)
-
-    Raises ValueError for unknown tuner types.
-    """
-    tuner_cfg = config.get("tuner", {})
+    tuner_cfg  = config.get("tuner", {})
     tuner_type = tuner_cfg.get("type", "").lower()
-
     if tuner_type == "si4689":
         from .si4689 import SI4689Tuner
         return SI4689Tuner(tuner_cfg)
-
-    if tuner_type == "tef6686":
-        from .tef6686 import TEF6686Tuner
-        return TEF6686Tuner(tuner_cfg)
-
+    if tuner_type in ("tef_headless_lite", "tef_headless", "tef6686"):
+        from .tef import TEFTuner
+        return TEFTuner(tuner_cfg)
     raise ValueError(
         f"Unknown tuner type: '{tuner_type}'. "
-        f"Supported: 'si4689', 'tef6686'. "
-        f"Check the 'tuner.type' key in config.json."
+        f"Supported: si4689, tef_headless_lite, tef_headless, tef6686."
     )
-
 
 __all__ = ["TunerBase", "get_tuner"]

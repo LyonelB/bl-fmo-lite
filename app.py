@@ -24,11 +24,7 @@ load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('/tmp/bl-fmo-lite.log', mode='a', encoding='utf-8'),
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -49,8 +45,14 @@ SESSION_TIMEOUT = timedelta(minutes=60)
 
 @app.before_request
 def check_session_timeout():
-    if request.endpoint in ('stream_stats', 'proxy_stream', 'static'):
+    if request.endpoint in ('stream_stats', 'proxy_stream', 'static',
+                            'setup_page', 'scan_tuners', 'setup_apply'):
         return
+    # Redirection setup si pas de config
+    if not _has_valid_config() and request.endpoint not in ('login', 'logout', None):
+        if request.is_json or (request.path.startswith('/api/') and request.endpoint):
+            return jsonify({'status': 'error', 'message': 'Setup required'}), 503
+        return redirect(url_for('setup_page'))
     if session.get('logged_in'):
         last_active = session.get('last_active')
         if last_active:
@@ -297,20 +299,11 @@ def save_config():
 @auth.login_required
 def get_logs():
     try:
-        log_file = '/tmp/bl-fmo-lite.log'
-        import os
-        if os.path.exists(log_file) and os.path.getsize(log_file) > 0:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()[-100:]
-            return jsonify({'logs': ''.join(lines)})
-        # Fallback journalctl
         result = subprocess.run(
             ['journalctl', '-u', 'bl-fmo-lite', '-n', '100', '--no-pager'],
             capture_output=True, text=True
         )
-        if result.stdout and 'No entries' not in result.stdout:
-            return jsonify({'logs': result.stdout})
-        return jsonify({'logs': '-- En attente de logs --'})
+        return jsonify({'logs': result.stdout})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -438,28 +431,15 @@ def proxy_stream():
         except Exception:
             source = 'http://localhost:8000/stream'
 
-    # SI4689 : utiliser le relay interne (multi-clients)
-    if monitor and hasattr(monitor.tuner, 'stream_listener'):
-        def generate():
-            q = monitor.tuner.stream_listener()
-            try:
-                while True:
-                    chunk = q.get(timeout=10)
-                    yield chunk
-            except Exception:
-                pass
-            finally:
-                monitor.tuner.stream_unlisten(q)
-    else:
-        def generate():
-            try:
-                with req.get(source, stream=True, timeout=5) as r:
-                    r.raise_for_status()
-                    for chunk in r.iter_content(chunk_size=8192):
-                        if chunk:
-                            yield chunk
-            except Exception as e:
-                logger.error(f"Erreur proxy stream ({source}): {e}")
+    def generate():
+        try:
+            with req.get(source, stream=True, timeout=5) as r:
+                r.raise_for_status()
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        yield chunk
+        except Exception as e:
+            logger.error(f"Erreur proxy stream ({source}): {e}")
 
     return app.response_class(
         generate(),
@@ -630,11 +610,171 @@ def get_presets():
 # DÉMARRAGE
 # ──────────────────────────────────────────────────────────────────────
 
-try:
-    monitor = FMMonitor('config.json')
-    monitor.start()
-except Exception as e:
-    logger.error(f"Erreur démarrage monitor: {e}")
+def _has_valid_config():
+    """Retourne True si config.json existe et contient un tuner configuré."""
+    if not os.path.exists('config.json'):
+        return False
+    try:
+        with open('config.json') as f:
+            cfg = json.load(f)
+        return bool(cfg.get('tuner', {}).get('type'))
+    except Exception:
+        return False
+
+
+def start_monitor():
+    global monitor
+    try:
+        monitor = FMMonitor('config.json')
+        monitor.start()
+        logger.info("Monitor démarré")
+    except Exception as e:
+        logger.error(f"Erreur démarrage monitor: {e}")
+
+
+if _has_valid_config():
+    start_monitor()
+else:
+    logger.info("Pas de configuration — en attente de setup (/setup)")
+
+
+# ── Routes Setup ────────────────────────────────────────────────────────
+
+@app.route('/api/select-source', methods=['POST'])
+@csrf.exempt
+@auth.login_required
+def select_source():
+    """Change le tuner actif et redémarre le monitor."""
+    global monitor
+    try:
+        data    = request.get_json()
+        source  = data.get('source')   # 'tef', 'si4689', 'rtlsdr', 'gnuradio'
+        port    = data.get('port', '')
+
+        # Charger la config template correspondante
+        if source == 'tef':
+            tpl = 'config_tef6686.json'
+            tuner_type = 'tef6686'
+        else:
+            tpl = 'config_si4689.json'
+            tuner_type = 'si4689'
+
+        if os.path.exists(tpl):
+            with open(tpl) as f:
+                cfg = json.load(f)
+        else:
+            with open('config.json') as f:
+                cfg = json.load(f)
+
+        cfg['tuner']['type'] = tuner_type
+        if source == 'tef' and port:
+            cfg['tuner']['port'] = port
+
+        with open('config.json', 'w') as f:
+            json.dump(cfg, f, indent=2)
+
+        # Redémarrer le monitor
+        if monitor:
+            monitor.stop()
+            time.sleep(2)
+        start_monitor()
+
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f'select_source error: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/setup')
+def setup_page():
+    return render_template('setup.html')
+
+
+@app.route('/api/scan-dongle', methods=['GET','POST'])
+@app.route('/api/scan-tuners')
+def scan_tuners():
+    """Détecte les tuners disponibles — format compatible config.html."""
+    import glob, subprocess as _sp
+
+    # TEF6686
+    tef_ports = glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
+
+    # SI4689
+    radio_py = os.path.join(os.path.dirname(__file__),
+                            'vendor', 'raspiaudio', 'radio.py')
+    alsa_out = _sp.run(['arecord','-l'], capture_output=True, text=True).stdout
+    si4689_detected = os.path.exists(radio_py) and 'si4689' in alsa_out.lower()
+
+    return jsonify({
+        'tef':    tef_ports,
+        'si4689': si4689_detected,
+        'rtlsdr': False,
+        'tuners': [
+            {'type':'tef6686','port':p,'alsa_device':'hw:Tuner','detected':True}
+            for p in tef_ports
+        ] + ([{
+            'type':'si4689','radio_py_path':radio_py,
+            'api_port':8686,'alsa_device':'plughw:CARD=si4689i2s,DEV=0',
+            'detected':si4689_detected
+        }] if os.path.exists(radio_py) else []),
+    })
+
+
+@app.route('/api/setup/apply', methods=['POST'])
+@csrf.exempt
+def setup_apply():
+    """Sauvegarde la config choisie et démarre le monitor."""
+    global monitor
+    try:
+        data = request.get_json()
+        tuner_type = data.get('type')
+        frequency  = data.get('frequency', '88.6M')
+        station    = data.get('station_name', 'Ma Radio')
+
+        # Charger le template de config correspondant
+        tpl_path = f'config_{tuner_type}.json'
+        if os.path.exists(tpl_path):
+            with open(tpl_path) as f:
+                cfg = json.load(f)
+        else:
+            cfg = {}
+
+        # Appliquer les paramètres
+        cfg.setdefault('tuner', {})['type']      = tuner_type
+        cfg['tuner']['frequency']                = frequency
+        cfg.setdefault('station', {})['name']    = station
+        cfg['station']['frequency_display']      = frequency.replace('M', ' MHz')
+
+        # Paramètres spécifiques TEF6686
+        if tuner_type == 'tef6686':
+            cfg['tuner']['port']        = data.get('port', '/dev/ttyACM0')
+            cfg['tuner']['alsa_device'] = data.get('alsa_device', 'hw:Tuner')
+
+        # Paramètres spécifiques SI4689
+        if tuner_type == 'si4689':
+            cfg['tuner']['radio_py_path'] = data.get('radio_py_path',
+                'vendor/raspiaudio/radio.py')
+            cfg['tuner']['api_port']      = int(data.get('api_port', 8686))
+            cfg['tuner']['alsa_device']   = data.get('alsa_device',
+                'plughw:CARD=si4689i2s,DEV=0')
+
+        # Sauvegarder
+        with open('config.json', 'w') as f:
+            json.dump(cfg, f, indent=2)
+
+        # Arrêter l'ancien monitor si actif
+        if monitor:
+            monitor.stop()
+            time.sleep(2)
+
+        # Démarrer le nouveau monitor
+        start_monitor()
+
+        return jsonify({'status': 'success', 'redirect': '/'})
+
+    except Exception as e:
+        logger.error(f"Setup error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 if __name__ == '__main__':

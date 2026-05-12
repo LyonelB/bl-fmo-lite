@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BL-FMO-LITE — Configuration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f8fafc; font-family: 'Inter', sans-serif; }
+    .tuner-card { transition: all 0.2s; cursor: pointer; }
+    .tuner-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(59,130,246,0.15); }
+    .tuner-card.selected { border-color: #3b82f6; background: #eff6ff; }
+    .tuner-card.not-detected { opacity: 0.5; pointer-events: none; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-2xl">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold mb-4">
+        BL <span class="opacity-60">·</span> FMO-LITE
+      </div>
+      <h1 class="text-2xl font-bold text-gray-900">Configuration initiale</h1>
+      <p class="text-gray-500 mt-1">Sélectionnez votre tuner FM</p>
+    </div>
+
+    <!-- Scan en cours -->
+    <div id="scanning" class="text-center py-8">
+      <div class="pulse text-blue-500 text-sm font-medium">Détection des tuners…</div>
+    </div>
+
+    <!-- Liste des tuners -->
+    <div id="tuner-list" class="space-y-3 hidden"></div>
+
+    <!-- Formulaire fréquence + station -->
+    <div id="form-section" class="mt-6 hidden">
+      <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Nom de la station</label>
+          <input id="station-name" type="text" value="Ma Radio"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Fréquence FM</label>
+          <input id="frequency" type="text" value="88.6M" placeholder="ex: 88.6M"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-400">
+        </div>
+      </div>
+
+      <button id="btn-apply"
+        class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">
+        Lancer le monitoring
+      </button>
+
+      <div id="error-msg" class="mt-3 text-red-500 text-sm text-center hidden"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let selectedTuner = null;
+
+    async function scanTuners() {
+      const resp = await fetch('/api/scan-tuners');
+      const data = await resp.json();
+      renderTuners(data.tuners);
+    }
+
+    function renderTuners(tuners) {
+      document.getElementById('scanning').classList.add('hidden');
+      const list = document.getElementById('tuner-list');
+      list.classList.remove('hidden');
+
+      if (!tuners.length) {
+        list.innerHTML = '<div class="text-center text-gray-400 py-6">Aucun tuner détecté</div>';
+        return;
+      }
+
+      list.innerHTML = tuners.map(t => `
+        <div class="tuner-card border-2 border-gray-200 rounded-xl p-4 bg-white ${!t.detected ? 'not-detected' : ''}"
+             onclick="selectTuner(${JSON.stringify(t).replace(/"/g, '&quot;')})" data-type="${t.type}">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm
+              ${t.type === 'tef6686' ? 'bg-green-500' : 'bg-blue-500'}">
+              ${t.type === 'tef6686' ? 'TEF' : 'SI'}
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-gray-900">${t.label}</div>
+              <div class="text-xs text-gray-400 font-mono mt-0.5">
+                ${t.port || t.radio_py_path || ''}
+              </div>
+            </div>
+            <div class="text-xs font-bold ${t.detected ? 'text-green-500' : 'text-gray-300'}">
+              ${t.detected ? '● Détecté' : '○ Non détecté'}
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // Auto-sélectionner si un seul détecté
+      const detected = tuners.filter(t => t.detected);
+      if (detected.length === 1) selectTuner(detected[0]);
+    }
+
+    function selectTuner(tuner) {
+      selectedTuner = tuner;
+      document.querySelectorAll('.tuner-card').forEach(c => c.classList.remove('selected'));
+      const card = document.querySelector(`[data-type="${tuner.type}"]`);
+      if (card) card.classList.add('selected');
+      document.getElementById('form-section').classList.remove('hidden');
+    }
+
+    document.getElementById('btn-apply').addEventListener('click', async () => {
+      if (!selectedTuner) return;
+      const btn = document.getElementById('btn-apply');
+      btn.disabled = true;
+      btn.textContent = 'Démarrage…';
+
+      const payload = {
+        ...selectedTuner,
+        frequency:    document.getElementById('frequency').value,
+        station_name: document.getElementById('station-name').value,
+      };
+
+      try {
+        const resp = await fetch('/api/setup/apply', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+          window.location.href = data.redirect || '/';
+        } else {
+          document.getElementById('error-msg').textContent = data.message;
+          document.getElementById('error-msg').classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Lancer le monitoring';
+        }
+      } catch (e) {
+        document.getElementById('error-msg').textContent = 'Erreur réseau';
+        document.getElementById('error-msg').classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Lancer le monitoring';
+      }
+    });
+
+    scanTuners();
+  </script>
+
+</body>
+</html>
