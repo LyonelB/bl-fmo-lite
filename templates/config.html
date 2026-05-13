@@ -603,6 +603,9 @@
         name:      document.getElementById('station-name').value,
         frequency: document.getElementById('frequency').value
       },
+      tuner: {
+        frequency: document.getElementById('frequency').value
+      },
       rtl_sdr: {
         frequency: document.getElementById('frequency').value,
         gain:      parseInt(document.getElementById('gain').value) || 0

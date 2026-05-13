@@ -276,14 +276,24 @@ def save_config():
 
         logger.info("Configuration sauvegardée")
 
-        # Redémarrer le monitor si la fréquence a changé
+        # Changer la fréquence
         if 'tuner' in data and 'frequency' in data['tuner'] and monitor:
-            logger.info("Fréquence modifiée — redémarrage monitor")
-            monitor.stop()
-            time.sleep(2)
-            monitor.config = cfg
-            monitor.tuner_config = cfg.get('tuner', {})
-            monitor.start()
+            freq_str = data['tuner']['frequency']
+            freq_mhz = float(freq_str.replace('M','').replace('m',''))
+            if hasattr(monitor.tuner, 'tune'):
+                monitor.tuner.tune(freq_mhz)
+                cfg['tuner']['frequency'] = f'{freq_mhz}M'
+                with open('config.json', 'w') as _f:
+                    json.dump(cfg, _f, indent=2)
+                
+                logger.info(f'Fréquence changée → {freq_mhz} MHz (sans redémarrage)')
+            else:
+                logger.info('Fréquence modifiée — redémarrage monitor')
+                monitor.stop()
+                time.sleep(2)
+                monitor.config = cfg
+                monitor.tuner_config = cfg.get('tuner', {})
+                monitor.start()
 
         return jsonify({'status': 'success', 'message': 'Configuration enregistrée'})
 
@@ -698,6 +708,11 @@ def scan_tuners():
 
     # TEF6686
     tef_ports = glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
+    # Identifier le type de tuner TEF selon le port
+    def _tef_label(port):
+        if 'ACM' in port: return 'TEF668X Headless USB Lite'
+        if 'USB' in port: return 'TEF6686 ESP32'
+        return 'TEF tuner'
 
     # SI4689
     radio_py = os.path.join(os.path.dirname(__file__),

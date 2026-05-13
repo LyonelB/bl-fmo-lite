@@ -1,11 +1,10 @@
 {
   "tuner": {
-    "type": "tef6686",
+    "type": "tef_headless_lite",
     "frequency": "88.6M",
-    "port": "/dev/ttyUSB0",
+    "port": "/dev/ttyACM0",
     "alsa_device": "hw:Tuner",
-    "baud_rate": 115200,
-    "snr_scale": 1
+    "snr_scale": 6
   },
   "audio": {
     "icecast_url": "http://localhost:8000/stream.mp3",

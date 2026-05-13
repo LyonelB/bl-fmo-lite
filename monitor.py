@@ -242,7 +242,14 @@ class FMMonitor:
             while self.running:
                 time.sleep(5)
         else:
-            self._alsa_to_icecast()
+            icecast_url = self.audio_config.get('icecast_url', '')
+            alsa_device = getattr(self.tuner, 'alsa_device', '')
+            if icecast_url and alsa_device:
+                self._alsa_to_icecast()
+            else:
+                logger.info('Audio désactivé (pas de device ALSA ou URL Icecast)')
+                while self.running:
+                    time.sleep(10)
 
     def _relay_stream(self, source_url: str):
         """Relaie un stream HTTP existant vers Icecast2."""

@@ -156,10 +156,11 @@ class TEFDriver:
         b'Y100\n',   # volume 100 %
     ]
 
-    def __init__(self, port='/dev/ttyACM0', baud_rate=115200,
+    def __init__(self, port='/dev/ttyACM0', baud_rate=115200, handshake=False,
                  on_signal=None, on_pi=None, on_ps=None, on_rt=None, on_ms=None):
         self.port      = port
         self.baud_rate = baud_rate
+        self.handshake = handshake
         self.on_signal = on_signal
         self.on_pi     = on_pi
         self._rds      = RDSDecoder(on_ps=on_ps, on_rt=on_rt, on_ms=on_ms)
@@ -213,6 +214,10 @@ class TEFDriver:
             try:
                 with self._lock:
                     self._ser = serial.Serial(self.port, self.baud_rate, timeout=1)
+                    if self.handshake:
+                        import time as _t; _t.sleep(0.5)
+                        self._ser.write(b'x\n')
+                        _t.sleep(0.5)
                     self._ser.dtr = True
                 time.sleep(0.3)
                 self._send_init()
@@ -277,7 +282,7 @@ class TEFDriver:
             if len(parts) >= 2 and self.on_signal:
                 try:
                     dbf      = float(parts[0])
-                    snr      = int(parts[1]) * 6   # NXP TEF668X: SNR en steps de 6 dB (0-7 → 0-42 dB)
+                    snr      = int(parts[1])  # valeur brute — snr_scale appliqué dans TEFTuner
                     mpath    = int(parts[2]) if len(parts) > 2 else 0
                     offset   = int(parts[3]) if len(parts) > 3 else 0
                     self.on_signal(dbf, snr, mpath, offset)

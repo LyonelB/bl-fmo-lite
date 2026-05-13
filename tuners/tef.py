@@ -21,9 +21,9 @@ log = logging.getLogger(__name__)
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _VARIANTS = {
-    'tef_headless_lite': {'baud_rate': 115200, 'usb_audio': True},
-    'tef_headless':      {'baud_rate': 115200, 'usb_audio': False},
-    'tef6686':           {'baud_rate': 19200,  'usb_audio': False},
+    'tef_headless_lite': {'baud_rate': 115200, 'usb_audio': True,  'snr_scale': 6, 'handshake': False},
+    'tef_headless':      {'baud_rate': 115200, 'usb_audio': False, 'snr_scale': 6, 'handshake': False},
+    'tef6686':           {'baud_rate': 115200, 'usb_audio': False, 'snr_scale': 1, 'handshake': True},
 }
 
 
@@ -45,11 +45,14 @@ class TEFTuner(TunerBase):
         self.port      = config.get("port", "/dev/ttyACM0")
         variant_key    = config.get("type", "tef_headless_lite").lower()
         variant        = _VARIANTS.get(variant_key, _VARIANTS['tef_headless_lite'])
-        self.baud_rate = int(config.get("baud_rate", variant['baud_rate']))
-        self.usb_audio = variant['usb_audio']
+        self.baud_rate  = int(config.get("baud_rate", variant["baud_rate"]))
+        self.usb_audio  = variant['usb_audio']
+        self.snr_scale  = int(config.get('snr_scale', variant.get('snr_scale', 1)))
+        self.handshake  = variant.get('handshake', False)
 
         self._driver = None
         self._lock   = threading.Lock()
+        self._tuning = False
 
         self._signal_dbf:     Optional[float] = None
         self._snr:            Optional[int]   = None
@@ -78,6 +81,7 @@ class TEFTuner(TunerBase):
         self._driver = TEFDriver(
             port=self.port,
             baud_rate=self.baud_rate,
+            handshake=self.handshake,
             on_signal=self._on_signal,
             on_pi=self._on_pi,
             on_ps=self._on_ps,
@@ -86,7 +90,7 @@ class TEFTuner(TunerBase):
         )
         self._driver.start(freq_khz=freq_khz)
 
-        deadline = time.time() + 5
+        deadline = time.time() + 10
         while time.time() < deadline:
             if self._signal_dbf is not None:
                 break
@@ -107,18 +111,30 @@ class TEFTuner(TunerBase):
             self._driver = None
         log.info("TEF: arrêté")
 
+    def is_running(self) -> bool:
+        return self._running or self._tuning
+
     def tune(self, frequency_mhz: float) -> bool:
+        import time as _t
         freq_khz = int(frequency_mhz * 1000)
         if self._driver:
+            self._tuning = True   # neutralise le watchdog
+            self._signal_dbf = None  # reset signal
             self._driver.tune(freq_khz)
+            self.frequency = f'{frequency_mhz}M'
             log.info("TEF: tune → %.1f MHz", frequency_mhz)
+            def _clear_tuning():
+                _t.sleep(10)
+                self._tuning = False
+            import threading as _th
+            _th.Thread(target=_clear_tuning, daemon=True).start()
             return True
         return False
 
     def _on_signal(self, dbf, snr, multipath, offset):
         with self._lock:
             self._signal_dbf = dbf
-            self._snr        = snr
+            self._snr        = snr * self.snr_scale
             self._multipath  = multipath
             self._offset_hz  = offset * 100
 
